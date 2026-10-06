@@ -2,6 +2,8 @@
 
 A native macOS menu bar utility that fixes spelling where you are already typing, using an on-device LLM. Built with Swift, AppKit, SwiftUI, Accessibility, and Apple Foundation Models. [Sparkle](https://sparkle-project.org/) provides signed app updates.
 
+Settings use Apple's native Liquid Glass materials and controls, with [system sidebar navigation](https://developer.apple.com/design/human-interface-guidelines/sidebars). Text editors retain readable backgrounds, and the window respects the system's Reduce Transparency setting.
+
 **[Download LocalWrite for macOS](https://github.com/varvand/LocalWrite/releases/latest/download/LocalWrite.zip)** · [All releases](https://github.com/varvand/LocalWrite/releases)
 
 The download contains the built `LocalWrite.app`; no Xcode or source build is needed. Requires **macOS 26 or later and an Apple Silicon Mac (M1 or newer)**. Local models are supplied by Apple Intelligence or a separate Ollama installation.

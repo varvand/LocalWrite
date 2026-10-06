@@ -190,7 +190,7 @@ final class CorrectionHUD {
         guard let panel else { return }
         panel.contentView = NSHostingView(rootView:
             HStack(spacing: 12) {
-                Image(systemName: symbol).font(.system(size: 24)).foregroundStyle(Color.accentColor)
+                Image(systemName: symbol).font(.system(size: 24)).foregroundStyle(LocalWriteStyle.accent)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("LocalWrite").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
                     Text(message).font(.system(size: 13, weight: .medium)).fixedSize(horizontal: false, vertical: true)
@@ -198,8 +198,7 @@ final class CorrectionHUD {
                 Spacer(minLength: 0)
             }
             .padding(18).frame(width: 400, alignment: .leading)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
-            .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(.white.opacity(0.12)))
+            .glassEffect(.regular, in: .rect(cornerRadius: 22))
             .accessibilityHidden(true)
         )
         let size = panel.contentView!.fittingSize

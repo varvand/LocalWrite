@@ -151,13 +151,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     @objc func openSettings() {
         if settingsWindow == nil {
-            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 790, height: 610),
-                                  styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 880, height: 680),
+                                  styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
             window.title = "LocalWrite"
             window.titlebarAppearsTransparent = true
             window.titleVisibility = .hidden
+            window.toolbarStyle = .unified
+            window.isOpaque = false
+            window.backgroundColor = .clear
             window.isReleasedWhenClosed = false
-            window.minSize = NSSize(width: 790, height: 640)
+            window.contentMinSize = NSSize(width: 820, height: 620)
             window.contentView = NSHostingView(rootView: SettingsView(controller: controller, preferences: controller.preferences))
             window.delegate = self
             window.center()
