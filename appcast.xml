@@ -4,6 +4,20 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <channel>
         <title>LocalWrite</title>
         <item>
+            <title>1.1.5</title>
+            <pubDate>Tue, 06 Oct 2026 16:53:37 +0000</pubDate>
+            <link>https://github.com/varvand/LocalWrite</link>
+            <sparkle:version>2.5.0</sparkle:version>
+            <sparkle:shortVersionString>1.1.5</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <enclosure url="https://github.com/varvand/LocalWrite/releases/download/build-2.5.0/LocalWrite-2.5.0.zip" length="2434727" type="application/octet-stream" sparkle:edSignature="PFc0eJnbPblVOGSFNVyAA6kjrHWBBWWX+lgPQ1vKxF90rogz59EHILqeMdTupcl8EcAJ+0OZwKtsUkfWTd+NAA=="></enclosure>
+            <sparkle:deltas>
+                <enclosure url="https://github.com/varvand/LocalWrite/releases/download/build-2.5.0/LocalWrite2.5.0-2.4.0.delta" sparkle:deltaFrom="2.4.0" length="3958" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976336" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="TdOIJk0F9NIMELlBo9Ie/tQQWDBak9N9UvNmZ0Xhqlij0GF0eR9rKXCQGaW3jQ6JybAQGa0k6LPXBxVOaSF8Cg=="></enclosure>
+                <enclosure url="https://github.com/varvand/LocalWrite/releases/download/build-2.5.0/LocalWrite2.5.0-2.3.0.delta" sparkle:deltaFrom="2.3.0" length="3958" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976336" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="i+nrFWsRUN0C/wsJ4PI3U54W4RARHXQugWr3/FSwgcfEa1hx5bjLHR7PLgQ0YEzNThHt5GczTOocougjB+8ECA=="></enclosure>
+            </sparkle:deltas>
+        </item>
+        <item>
             <title>1.1.4</title>
             <pubDate>Tue, 06 Oct 2026 16:34:47 +0000</pubDate>
             <link>https://github.com/varvand/LocalWrite</link>
@@ -28,6 +42,6 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
         </item>
     </channel>
 </rss><!-- sparkle-signatures:
-edSignature: O9gLaT3cm1u528qY0wssx5AGh1+3m/36oEqK7UQCVWYmlDCRnAKJJ8e4qF6zQcuoNff0oOVwuvjOfapcvFalCA==
-length: 2467
+edSignature: HhFCACocuelWKmbd8DA5hhqouv263uwMH0U4SbbP5cqP5HUHNgZp9PF8QWmqhRSSRbcWpmAiAPKM1PHlkJmYBA==
+length: 4148
 -->
