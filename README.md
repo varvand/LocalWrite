@@ -19,7 +19,7 @@ The menu bar icon opens Settings, cancellation, and **Undo last correction**. Un
 
 **Apple Intelligence** is the default. It uses `SystemLanguageModel.default` through Foundation Models, returning structured word-level spelling edits. Local macOS dictionary suggestions help the model find misspellings; the LLM chooses the correction in context. LocalWrite composes the final passage locally, preserving its formatting. Requires macOS 26+, a supported Mac, Apple Intelligence enabled, and its downloaded on-device model. The app shows actual model availability in Settings.
 
-**Rescue** accuracy is enabled by default. The complete line or passage is always supplied as context rather than correcting words independently. A first pass ranks multilingual macOS dictionary candidates using edit, transposition, and nearby-key distance before the local model chooses among them in context; a verification pass then checks remaining suspicious text. Rescue accepts bounded one-to-three-word edits so it can fix split or joined words while still composing the final text locally. Choose **Careful** for a faster single pass limited to individual words.
+**Rescue** accuracy is enabled by default. The complete line or passage is always supplied as context rather than correcting words independently. Both accuracy modes use a single model request. Rescue ranks multilingual macOS dictionary candidates using edit, transposition, and nearby-key distance before the model chooses among them in context. It accepts bounded one-to-three-word edits for split or joined words and composes the final text locally. **Careful** uses fewer dictionary candidates and accepts only individual word edits. There is no second inference or dictionary scan after generation, so a name or technical term cannot trigger another model request.
 
 **Ollama** is optional. Install and start [Ollama](https://docs.ollama.com/quickstart), download a text model, then choose **Local models → Ollama → Refresh**. Select one of your downloaded models. The default address is `http://127.0.0.1:11434`.
 
@@ -64,9 +64,10 @@ swift test --disable-sandbox --cache-path "$PWD/.build/cache"
 codesign --verify --deep --strict --verbose=2 dist/LocalWrite.app
 dist/LocalWrite.app/Contents/MacOS/LocalWrite --diagnose
 dist/LocalWrite.app/Contents/MacOS/LocalWrite --check-model
+dist/LocalWrite.app/Contents/MacOS/LocalWrite --check-model --ollama-model qwen3.5:9b
 ```
 
-Tests cover paragraph boundaries, selection priority, emoji/UTF-16 cursor handling, empty/oversized inputs, conservative output validation, and local-only model routing. `--check-model` uses a fixed sample sentence to exercise the real Apple model. It does not read any open editor. A development command sandbox may block Apple model services even if the model reports ready; run the signed app normally on the Mac.
+Tests cover paragraph boundaries, selection priority, emoji/UTF-16 cursor handling, empty/oversized inputs, conservative output validation, single-request Rescue behavior, and local-only model routing. `--check-model` uses a fixed sample sentence to exercise the real Apple model and reports correction time. Add `--ollama-model` with a downloaded model name to test Ollama instead. It does not read any open editor. A development command sandbox may block Apple model services even if the model reports ready; run the signed app normally on the Mac.
 
 Manual integration check after granting Accessibility:
 

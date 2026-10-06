@@ -13,6 +13,34 @@ import Testing
     #expect(CorrectionEngine.typoScore(from: "jello", to: "hello") < CorrectionEngine.typoScore(from: "jello", to: "cello"))
 }
 
+private actor SpellingRequestRecorder {
+    private(set) var requests: [(prompt: String, instructions: String)] = []
+    let edits: [WordEdit]
+
+    init(edits: [WordEdit]) { self.edits = edits }
+
+    func respond(prompt: String, instructions: String) -> [WordEdit] {
+        requests.append((prompt, instructions))
+        return edits
+    }
+}
+
+@Test func rescueUsesOneModelRequestDespiteRemainingDictionaryFlags() async throws {
+    let input = "heldlo mxy namea is vincent"
+    // The model may leave another typo or an unfamiliar name unchanged. Neither
+    // is allowed to cause a second, hidden model request.
+    let recorder = SpellingRequestRecorder(edits: [.init(original: "heldlo", replacement: "hello")])
+    let result = try await CorrectionEngine.correct(input, configuration: .init(provider: .apple, mode: .rescue)) { prompt, instructions in
+        await recorder.respond(prompt: prompt, instructions: instructions)
+    }
+    let requests = await recorder.requests
+    #expect(requests.count == 1)
+    #expect(result == "hello mxy namea is vincent")
+    let request = try #require(requests.first)
+    #expect(request.prompt.contains("<text>\n\(input)\n</text>"))
+    #expect(request.instructions.contains("heavily mistyped"))
+}
+
 @Test func paragraphAtCursorPreservesOtherParagraphs() throws {
     let text = "First paragraph.\nA mesage here.\nThird paragraph."
     let target = try TextTarget(fullText: text, selection: NSRange(location: 24, length: 0), scope: .paragraph)

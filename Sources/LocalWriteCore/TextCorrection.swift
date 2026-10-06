@@ -26,7 +26,7 @@ public enum CorrectionMode: String, Codable, CaseIterable, Sendable {
         case .careful:
             "One model pass for ordinary typos. Only single-word corrections are accepted."
         case .rescue:
-            "Uses broader dictionary candidates and a verification pass for heavily mistyped text. Short split or joined-word repairs are also allowed."
+            "One model pass with broader dictionary candidates for heavily mistyped text. Also repairs short split or joined words."
         }
     }
 }

@@ -14,8 +14,24 @@ struct LocalWriteApp {
                 print("Accessibility: \(AXIsProcessTrusted() ? "granted" : "not granted")")
                 if CommandLine.arguments.contains("--check-model") {
                     do {
+                        let arguments = CommandLine.arguments
+                        let modelIndex = arguments.firstIndex(of: "--ollama-model")
+                        let configuration: EngineConfiguration
+                        if let modelIndex {
+                            guard arguments.indices.contains(modelIndex + 1), !arguments[modelIndex + 1].hasPrefix("--") else {
+                                throw CorrectionError.message("Pass a downloaded model name after --ollama-model.")
+                            }
+                            configuration = .init(provider: .ollama, ollamaModel: arguments[modelIndex + 1], mode: .rescue)
+                        } else {
+                            configuration = .init(provider: .apple, mode: .rescue)
+                        }
                         let text = "heldlo mxy namea is vincent"
-                        let result = try await CorrectionEngine.correct(text, configuration: .init(provider: .apple, mode: .rescue))
+                        print("Testing: \(configuration.provider.title)\(configuration.ollamaModel.isEmpty ? "" : " · " + configuration.ollamaModel)")
+                        let started = ContinuousClock.now
+                        let result = try await CorrectionEngine.correct(text, configuration: configuration)
+                        let elapsed = started.duration(to: .now).components
+                        let seconds = Double(elapsed.seconds) + Double(elapsed.attoseconds) / 1e18
+                        print("Correction time: \(String(format: "%.2f", seconds))s")
                         print("Input: \(text)")
                         print("Output: \(result)")
                         guard result.lowercased() == "hello my name is vincent" else {

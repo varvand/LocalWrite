@@ -75,35 +75,35 @@ public enum CorrectionEngine {
     }
 
     public static func correct(_ text: String, configuration: EngineConfiguration) async throws -> String {
+        try await correct(text, configuration: configuration) { prompt, instructions in
+            try await generateEdits(prompt, instructions: instructions, configuration: configuration)
+        }
+    }
+
+    static func correct(
+        _ text: String,
+        configuration: EngineConfiguration,
+        generate: @Sendable (String, String) async throws -> [WordEdit]
+    ) async throws -> String {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, text.utf16.count <= 4_000 else {
             throw CorrectionError.message("Enter between 1 and 4,000 characters.")
         }
         try Task.checkCancellation()
         let hints = await spellingHints(for: text, mode: configuration.mode)
-        let edits = try await generateEdits(text, hints: hints, configuration: configuration, verification: false)
-        var corrected = try SpellingEdits.apply(edits, to: text, mode: configuration.mode)
-        if configuration.mode == .rescue, !hints.entries.isEmpty {
-            try Task.checkCancellation()
-            let verificationHints = await spellingHints(for: corrected, mode: .rescue)
-            if !verificationHints.entries.isEmpty {
-                let verificationEdits = try await generateEdits(corrected, hints: verificationHints, configuration: configuration, verification: true)
-                corrected = try SpellingEdits.apply(verificationEdits, to: corrected, mode: .rescue)
-            }
-        }
+        let prompt = "Correct every spelling error using the complete sentence as context.\n<text>\n\(text)\n</text>\n\(hints.prompt)"
+        // Dictionary false positives (especially names and technical terms) must
+        // never trigger another inference. Both accuracy modes use one request.
+        let edits = try await generate(prompt, instructions(for: configuration.mode))
         try Task.checkCancellation()
-        return corrected
+        return try SpellingEdits.apply(edits, to: text, mode: configuration.mode)
     }
 
-    private static func generateEdits(_ text: String, hints: SpellingHintSet, configuration: EngineConfiguration, verification: Bool) async throws -> [WordEdit] {
-        let task = verification
-            ? "This is a verification pass. Recheck every word and repair any spelling errors the first pass missed."
-            : "Correct every spelling error in this text. Check every word in the context of the complete sentence before responding."
-        let prompt = "\(task)\n<text>\n\(text)\n</text>\n\(hints.prompt)"
+    private static func generateEdits(_ prompt: String, instructions: String, configuration: EngineConfiguration) async throws -> [WordEdit] {
         switch configuration.provider {
         case .apple:
             let status = appleStatus
             guard status.available else { throw CorrectionError.message(status.detail) }
-            let session = LanguageModelSession(instructions: instructions(for: configuration.mode))
+            let session = LanguageModelSession(instructions: instructions)
             let response = try await session.respond(
                 to: prompt,
                 generating: SpellingResult.self,
@@ -114,7 +114,7 @@ public enum CorrectionEngine {
             return try await OllamaClient(address: configuration.ollamaAddress).correct(
                 prompt,
                 model: configuration.ollamaModel,
-                instructions: instructions(for: configuration.mode)
+                instructions: instructions
             )
         }
     }
@@ -124,7 +124,7 @@ public enum CorrectionEngine {
         var prompt: String {
             guard !entries.isEmpty else { return "" }
             return """
-            A local spelling dictionary produced the candidate lists below. Treat them as clues, not required changes. Choose only candidates that fit the complete sentence and original language. Names and technical terms can be correct even when the dictionary flags them.
+            Dictionary candidates are optional clues. Choose spellings that fit the complete sentence and original language. Names and technical terms may already be correct.
             <candidates>
             \(entries.joined(separator: "\n"))
             </candidates>
