@@ -6,8 +6,8 @@
     <key>CFBundleExecutable</key><string>LocalWrite</string>
     <key>CFBundleIdentifier</key><string>com.localwrite.mac</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>1.0</string>
-    <key>CFBundleVersion</key><string>1</string>
+    <key>CFBundleShortVersionString</key><string>1.1.0</string>
+    <key>CFBundleVersion</key><string>2.0.0</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>LSMinimumSystemVersion</key><string>26.0</string>
     <key>LSUIElement</key><true/>
@@ -15,5 +15,13 @@
     <key>NSPrincipalClass</key><string>NSApplication</string>
     <key>NSAccessibilityUsageDescription</key><string>LocalWrite reads and corrects the focused text field when you press your shortcut.</string>
     <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
+    <key>SUFeedURL</key><string>https://raw.githubusercontent.com/varvand/LocalWrite/updates/appcast.xml</string>
+    <key>SUPublicEDKey</key><string>mt9JCVINlVNVUia0EyRLE4niiRprbRmikb+GzFqke8w=</string>
+    <key>SUEnableAutomaticChecks</key><true/>
+    <key>SUAutomaticallyUpdate</key><false/>
+    <key>SUCheckInterval</key><integer>3600</integer>
+    <key>SUSendProfileInfo</key><false/>
+    <key>SUVerifyUpdateBeforeExtraction</key><true/>
+    <key>SURequireSignedFeed</key><true/>
     <key>NSHumanReadableCopyright</key><string>LocalWrite · Local spelling correction</string>
 </dict></plist>

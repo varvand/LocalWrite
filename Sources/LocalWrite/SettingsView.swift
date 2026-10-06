@@ -51,7 +51,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 7) {
                     Label("On-device by design", systemImage: "lock.shield").font(.system(size: 11, weight: .medium))
                     Text("Your writing stays with you.").font(.system(size: 11)).foregroundStyle(.secondary)
-                    Text("Version 1.0 · Made for your Mac").font(.system(size: 10)).foregroundStyle(.tertiary).padding(.top, 6)
+                    Text("Version \(controller.updates.version) · Made for your Mac").font(.system(size: 10)).foregroundStyle(.tertiary).padding(.top, 6)
                 }.padding(20)
             }.frame(width: 205).background(.quaternary.opacity(0.3))
             Divider()
@@ -191,6 +191,7 @@ struct SettingsView: View {
 
     private var behavior: some View {
         Group {
+            UpdateSettingsView(updates: controller.updates, isBusy: controller.isBusy)
             card {
                 VStack(alignment: .leading, spacing: 17) {
                     Toggle("Launch at login", isOn: Binding(get: { controller.launchAtLogin }, set: { controller.setLaunchAtLogin($0) }))
@@ -219,6 +220,29 @@ struct SettingsView: View {
 
     private func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content().frame(maxWidth: .infinity, alignment: .leading).padding(18)
+            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.primary.opacity(0.07)))
+    }
+}
+
+private struct UpdateSettingsView: View {
+    @ObservedObject var updates: UpdateController
+    let isBusy: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("App updates").font(.headline)
+                Spacer()
+                Button("Check for Updates…") { updates.checkForUpdates() }
+                    .disabled(!updates.canCheckForUpdates || isBusy)
+            }
+            Toggle("Automatically check for updates", isOn: Binding(
+                get: { updates.automaticallyChecksForUpdates },
+                set: { updates.setAutomaticallyChecksForUpdates($0) }
+            ))
+            Text(updates.status).font(.system(size: 12)).foregroundStyle(.secondary)
+        }.frame(maxWidth: .infinity, alignment: .leading).padding(18)
             .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12))
             .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.primary.opacity(0.07)))
     }

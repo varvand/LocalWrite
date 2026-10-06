@@ -1,6 +1,6 @@
 # LocalWrite
 
-A native macOS menu bar utility that fixes spelling where you are already typing, using an on-device LLM. Built with Swift, AppKit, SwiftUI, Accessibility, and Apple Foundation Models. No third-party package dependencies.
+A native macOS menu bar utility that fixes spelling where you are already typing, using an on-device LLM. Built with Swift, AppKit, SwiftUI, Accessibility, and Apple Foundation Models. [Sparkle](https://sparkle-project.org/) provides signed app updates.
 
 ## Use
 
@@ -13,7 +13,24 @@ By default, **Current line before cursor** corrects exactly the text from the ed
 
 Optional paragraph and entire-field modes use Accessibility offsets and support an explicit selection. These advanced modes depend more on the editor's Accessibility implementation; current-line mode is recommended for Obsidian and other Electron editors.
 
-The menu bar icon opens Settings, cancellation, and **Undo last correction**. Undo works only while the original field still contains exactly the applied result. It stores a single correction in memory until quit; no text is saved to disk by LocalWrite.
+The menu bar icon opens Settings, cancellation, **Check for Updates…**, and **Undo last correction**. Undo works only while the original field still contains exactly the applied result. It stores a single correction in memory until quit; no text is saved to disk by LocalWrite.
+
+## App updates
+
+LocalWrite checks for updates hourly. Choose **Check for Updates…** in the menu bar, or use **Behavior → App updates** to check manually and change automatic checking. Sparkle downloads the published app, verifies its Ed25519 signature before extracting it, and offers **Install & Relaunch**. The feed itself is also signed. Updates wait for an active correction to finish before restarting the app. No local compilation is needed; settings and downloaded Ollama models live outside the app bundle.
+
+Every successful `main` build runs on a standard `macos-26` GitHub runner, reuses the existing local code-signing certificate, and publishes a GitHub Release. The signed feed is on the separate `updates` branch. The workflow generates delta patches from the previous three published archives where worthwhile, with a full app archive as fallback. Pull requests run tests without signing secrets or write access. Sparkle is pinned to an exact version and checkout actions to a commit SHA. GitHub's automatic token publishes releases and the feed; no personal GitHub token is embedded in the app.
+
+Private signing keys are stored in macOS Keychain and encrypted secrets in the GitHub `updates` environment, whose deployment policy allows only `main`. Only the **public verification key** appears in `Info.plist`. Private keys, PKCS#12 exports, and passwords never belong in commits, logs, app bundles, release assets, or caches. The release step scans the archive and source for private-key material before publishing. Runner signing files and its temporary keychain are removed in an `always()` cleanup step.
+
+To configure signing on the original signing Mac after signing in with GitHub CLI:
+
+```sh
+swift package resolve --cache-path "$PWD/.build/cache"
+bash scripts/configure-updates.sh
+```
+
+The setup script exports the existing signing identity to a temporary encrypted file outside the checkout, uploads it and its export password directly to encrypted GitHub secrets through stdin, uploads the Sparkle update-signing seed the same way, and removes all temporary exports. It refuses to upload an update key whose public half differs from this app. This requires the original `com.localwrite.mac.updates` Sparkle key in Keychain. macOS may request the dedicated LocalWrite keychain password to export the identity; this password is stored in `~/Library/Application Support/LocalWrite/Signing/keychain-password`, and differs from your login password. Do not paste credentials into chats or source files.
 
 ## Local models
 
@@ -45,7 +62,7 @@ bash scripts/build.sh
 bash scripts/install.sh
 ```
 
-The first command creates `dist/LocalWrite.app` with its icon and Info.plist, signs it using a **persistent self-signed local certificate** with hardened runtime, and verifies the signature. The certificate and private key live in a dedicated keychain under `~/Library/Application Support/LocalWrite/Signing`. The build does not add a root certificate to system/login trust stores. The app's designated requirement pins that certificate, so its identity is stable across rebuilds. This is a local build, not notarized or suitable for distribution. No Apple developer account is needed. No app sandbox entitlement is applied, because the utility needs cross-app Accessibility access.
+The first command creates `dist/LocalWrite.app` with its icon, Info.plist, and pinned Sparkle framework, signs the framework/helpers and app inside-out using a **persistent self-signed local certificate** with hardened runtime, and verifies the signature. Self-signed builds disable library validation to load the bundled Sparkle framework without an Apple Team ID. The certificate and private key live in a dedicated keychain under `~/Library/Application Support/LocalWrite/Signing`. The build does not add a root certificate to system/login trust stores. The app's designated requirement pins that certificate, so its identity is stable across rebuilds. This is a local build, not notarized or suitable for general distribution. No Apple developer account is needed. No app sandbox entitlement is applied, because the utility needs cross-app Accessibility access.
 
 The second command copies it into `/Applications`, verifies the installed signature, and opens Settings. Quit a running copy before installing a rebuild. Set `LOCALWRITE_INSTALL_DIR` if a different install folder is necessary, and keep that folder consistent. You can also open `Package.swift` in Xcode; use the scripts to produce the full app bundle. A signed `dist/LocalWrite.zip` is also generated to avoid file-provider metadata affecting the bundle in cloud-synced project folders.
 

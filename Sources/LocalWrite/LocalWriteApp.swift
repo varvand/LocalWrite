@@ -94,6 +94,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         appMenu.addItem(.separator())
         let settings = appMenu.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         settings.target = self
+        let updates = appMenu.addItem(withTitle: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
+        updates.target = self
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Quit LocalWrite", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
@@ -135,6 +137,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         menu.addItem(.separator())
         let settings = menu.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         settings.target = self
+        let updates = menu.addItem(withTitle: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
+        updates.target = self
+        updates.isEnabled = controller.updates.canCheckForUpdates && !controller.isBusy
         menu.addItem(withTitle: "Quit LocalWrite", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
     }
 
@@ -165,6 +170,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     @objc private func cancelCorrection() { controller.cancelCorrection() }
     @objc private func undoCorrection() { controller.undoLastCorrection() }
+    @objc private func checkForUpdates() { controller.updates.checkForUpdates() }
     @objc private func correctFromMenu() {
         Task {
             try? await Task.sleep(for: .milliseconds(200))

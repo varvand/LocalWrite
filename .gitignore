@@ -3,3 +3,15 @@ dist/
 .DS_Store
 *.xcuserstate
 .swiftpm/
+# Signing material belongs in Keychain / encrypted CI secrets, never the repo.
+*.p12
+*.pfx
+*.key
+*.pem
+*.keychain
+*.keychain-db
+.env
+.env.*
+!*.env.example
+private-keys/
+signing-secrets/

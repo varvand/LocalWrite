@@ -1,0 +1,64 @@
+name: Build and publish LocalWrite
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: localwrite-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Test
+        run: swift test --disable-sandbox --cache-path "$PWD/.build/cache"
+
+  release:
+    needs: verify
+    if: github.repository == 'varvand/LocalWrite' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: macos-26
+    timeout-minutes: 20
+    environment: updates
+    permissions:
+      contents: write
+    env:
+      LOCALWRITE_BUILD_NUMBER: 2.${{ github.run_number }}.0
+      LOCALWRITE_VERSION: 1.1.${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Resolve pinned dependencies
+        run: swift package resolve --cache-path "$PWD/.build/cache"
+      - name: Import encrypted signing secrets
+        env:
+          LOCALWRITE_CERTIFICATE_P12: ${{ secrets.LOCALWRITE_CERTIFICATE_P12 }}
+          LOCALWRITE_CERTIFICATE_PASSWORD: ${{ secrets.LOCALWRITE_CERTIFICATE_PASSWORD }}
+          LOCALWRITE_UPDATE_PRIVATE_KEY: ${{ secrets.LOCALWRITE_UPDATE_PRIVATE_KEY }}
+        run: bash scripts/ci-import-signing.sh
+      - name: Build and verify signed app
+        run: bash scripts/build.sh
+      - name: Publish signed update and delta patches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/publish-update.sh
+      - name: Remove signing material
+        if: always()
+        run: |
+          set +x
+          if [[ -n "${LOCALWRITE_SIGNING_KEYCHAIN:-}" ]]; then
+            security delete-keychain "$LOCALWRITE_SIGNING_KEYCHAIN" || true
+          fi
+          find "$RUNNER_TEMP" -maxdepth 1 -type d -name 'localwrite-signing.*' -exec rm -rf {} +

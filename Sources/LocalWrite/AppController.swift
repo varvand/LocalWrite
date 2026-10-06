@@ -10,6 +10,7 @@ final class AppController: ObservableObject {
     let editor = AccessibilityEditor()
     let hotKeys = HotKeyManager()
     let hud = CorrectionHUD()
+    let updates = UpdateController()
     @Published var isBusy = false
     @Published var isTrusted = false
     @Published var appleStatus = CorrectionEngine.appleStatus
@@ -28,6 +29,7 @@ final class AppController: ObservableObject {
     private var timeoutTask: Task<Void, Never>?
 
     init() {
+        updates.correctionIsRunning = { [weak self] in self?.isBusy == true }
         refreshStatus()
         hotKeys.onTrigger = { [weak self] in self?.correctFocusedText() }
         do { try hotKeys.register(preferences.hotKey) }
@@ -56,6 +58,7 @@ final class AppController: ObservableObject {
                 isBusy = false
                 correctionTask = nil
                 onStateChange?()
+                updates.correctionDidFinish()
             }
             do {
                 let snapshot = try await editor.capture(scope: scope, excludedApps: exclusions)
@@ -98,7 +101,7 @@ final class AppController: ObservableObject {
         isBusy = true
         onStateChange?()
         Task {
-            defer { isBusy = false; onStateChange?() }
+            defer { isBusy = false; onStateChange?(); updates.correctionDidFinish() }
             do {
                 try await editor.undo(previous, clipboardFallback: preferences.clipboardFallback)
                 lastCorrection = nil
