@@ -4,6 +4,21 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <channel>
         <title>LocalWrite</title>
         <item>
+            <title>1.1.7</title>
+            <pubDate>Tue, 06 Oct 2026 18:51:10 +0000</pubDate>
+            <link>https://github.com/varvand/LocalWrite</link>
+            <sparkle:version>2.7.0</sparkle:version>
+            <sparkle:shortVersionString>1.1.7</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <enclosure url="https://github.com/varvand/LocalWrite/releases/download/build-2.7.0/LocalWrite-2.7.0.zip" length="2467981" type="application/octet-stream" sparkle:edSignature="WXevshIK5/jFVU3T1uisekS1xLD4toUeaGko4FbX7XK/x1L1mBVRByEkddG+8WMZ41xHsqHPavbgJ1TbvOgYAA=="></enclosure>
+            <sparkle:deltas>
+                <enclosure url="https://github.com/varvand/LocalWrite/releases/download/build-2.7.0/LocalWrite2.7.0-2.6.0.delta" sparkle:deltaFrom="2.6.0" length="92718" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976336" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="3tZfy6oFjdwwaysdEWcMLzEyyZNI2ttRsniMdGpc60hjsUXo+Li7mN9x6Tka2JJOWCs6E5qT5oCm0GtKcsWRCA=="></enclosure>
+                <enclosure url="https://github.com/varvand/LocalWrite/releases/download/build-2.7.0/LocalWrite2.7.0-2.5.0.delta" sparkle:deltaFrom="2.5.0" length="178890" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976336" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="+9mJOyrcI55+u1aTm6ZiovvANopTtvF6zUYia1qr5xjKIGcUM+V1X92NanSLFrZHJ7poXljkus7f+sGVwbV5BQ=="></enclosure>
+                <enclosure url="https://github.com/varvand/LocalWrite/releases/download/build-2.7.0/LocalWrite2.7.0-2.4.0.delta" sparkle:deltaFrom="2.4.0" length="178354" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976336" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="8hB8HCAVxLJEHdPqAD9ynnQ4Aa7ELgb6q49YEg2TU7FjOqDMIGhS0Zlsw0z51+CdKyl6zVWgX827jH9r+HYSDA=="></enclosure>
+            </sparkle:deltas>
+        </item>
+        <item>
             <title>1.1.6</title>
             <pubDate>Tue, 06 Oct 2026 18:37:04 +0000</pubDate>
             <link>https://github.com/varvand/LocalWrite</link>
@@ -32,21 +47,8 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
                 <enclosure url="https://github.com/varvand/LocalWrite/releases/download/build-2.5.0/LocalWrite2.5.0-2.3.0.delta" sparkle:deltaFrom="2.3.0" length="3958" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976336" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="i+nrFWsRUN0C/wsJ4PI3U54W4RARHXQugWr3/FSwgcfEa1hx5bjLHR7PLgQ0YEzNThHt5GczTOocougjB+8ECA=="></enclosure>
             </sparkle:deltas>
         </item>
-        <item>
-            <title>1.1.4</title>
-            <pubDate>Tue, 06 Oct 2026 16:34:47 +0000</pubDate>
-            <link>https://github.com/varvand/LocalWrite</link>
-            <sparkle:version>2.4.0</sparkle:version>
-            <sparkle:shortVersionString>1.1.4</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure url="https://github.com/varvand/LocalWrite/releases/download/build-2.4.0/LocalWrite-2.4.0.zip" length="2434730" type="application/octet-stream" sparkle:edSignature="p4H49QhiRasnaqDFY18RhQuUyJxUPOCwp+fiTLyvPXcMT3ntn45mqNn+zG44i9xwb3HjTohl7Os7hpAC9lEqDw=="></enclosure>
-            <sparkle:deltas>
-                <enclosure url="https://github.com/varvand/LocalWrite/releases/download/build-2.4.0/LocalWrite2.4.0-2.3.0.delta" sparkle:deltaFrom="2.3.0" length="3954" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="976336" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="08cOfKLM4PcX9Si7+9jUUSlnJtcOn6U0ZeafXNXef6TrXQqYIrk1t9hKZDJ7gVnhViqxWVo/CkGTUBz8vjyiAw=="></enclosure>
-            </sparkle:deltas>
-        </item>
     </channel>
 </rss><!-- sparkle-signatures:
-edSignature: BIdeZW65/J/4GocxMxNfFHbhnn2sqSTd4smoWwx9lVyep5g5toZmqWtSPWp2ocDpLBeSPX2afugx/VsIn5nPDw==
-length: 5497
+edSignature: 8VH3JH88r9LiZtWrlS5M8J5aUR1hLW2xmfpGkuqvuEuG5uDqTvwoyao2LbnlRj1n+ioosj8k/JWDIHJooZTfAA==
+length: 6358
 -->
