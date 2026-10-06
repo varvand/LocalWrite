@@ -36,23 +36,13 @@ struct SettingsView: View {
     private let green = LocalWriteStyle.accent
 
     var body: some View {
-        TabView(selection: $page) {
-            ForEach(SettingsPage.allCases) { item in
-                Tab(item.rawValue, systemImage: item.symbol, value: item) {
-                    settingsPage(item)
-                }
-            }
+        NavigationSplitView {
+            SettingsSidebar(selection: $page)
+                .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 260)
+        } detail: {
+            settingsPage(page)
         }
-        .tabViewStyle(.sidebarAdaptable)
-        .tabViewSidebarHeader {
-            Text("LocalWrite").font(.headline).padding(.vertical, 12)
-        }
-        .tabViewSidebarFooter {
-            VStack(alignment: .leading, spacing: 7) {
-                Label("On-device", systemImage: "lock.shield").font(.caption)
-                Text("Version \(controller.updates.version)").font(.caption).foregroundStyle(.secondary)
-            }.padding(.vertical, 8)
-        }
+        .navigationSplitViewStyle(.balanced)
         .toolbar {
             ToolbarItem {
                 Button {
@@ -241,6 +231,68 @@ struct SettingsView: View {
                     .font(.callout).foregroundStyle(.secondary)
             }
         }
+    }
+}
+
+private struct SettingsSidebar: View {
+    @Binding var selection: SettingsPage
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Namespace private var glassSelection
+    @FocusState private var focusedPage: SettingsPage?
+    private let accent = Color(nsColor: .controlAccentColor)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("LocalWrite").font(.headline)
+                .padding(.horizontal, 20).padding(.top, 24).padding(.bottom, 12)
+            GlassEffectContainer(spacing: 12) {
+                List {
+                    ForEach(SettingsPage.allCases) { item in
+                        Button {
+                            selection = item
+                            focusedPage = item
+                        } label: {
+                            Label {
+                                Text(item.rawValue).foregroundStyle(.primary)
+                            } icon: {
+                                Image(systemName: item.symbol).foregroundStyle(accent)
+                            }
+                            .font(.body)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 12).padding(.vertical, 9)
+                            .glassEffect(selection == item ? .regular.tint(accent.opacity(0.22)).interactive() : .identity,
+                                         in: .rect(cornerRadius: 10))
+                            .glassEffectID(selection == item ? "selection" : nil, in: glassSelection)
+                            .contentShape(.rect)
+                        }
+                        .buttonStyle(.plain)
+                        .focused($focusedPage, equals: item)
+                        .accessibilityAddTraits(selection == item ? .isSelected : [])
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
+                    }
+                }
+                .listStyle(.sidebar)
+                .scrollContentBackground(.hidden)
+                .accessibilityLabel("Settings pages")
+                .onKeyPress(.upArrow) { moveSelection(by: -1); return .handled }
+                .onKeyPress(.downArrow) { moveSelection(by: 1); return .handled }
+            }
+            .animation(reduceMotion ? nil : .snappy(duration: 0.22), value: selection)
+            VStack(alignment: .leading, spacing: 7) {
+                Label("On-device", systemImage: "lock.shield").font(.caption)
+                Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Development")")
+                    .font(.caption).foregroundStyle(.secondary)
+            }.padding(20)
+        }
+    }
+
+    private func moveSelection(by offset: Int) {
+        let pages = SettingsPage.allCases
+        guard let index = pages.firstIndex(of: selection), pages.indices.contains(index + offset) else { return }
+        selection = pages[index + offset]
+        focusedPage = selection
     }
 }
 
