@@ -30,6 +30,9 @@ KEYCHAIN_PASSWORD=$(cat "$SECRET_DIR/keychain-password")
 security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
 security set-keychain-settings -lut 21600 "$KEYCHAIN"
 security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+# codesign's identity lookup also consults the user keychain search list.
+# This changes only the disposable GitHub runner, not the signing Mac.
+security list-keychains -d user -s "$KEYCHAIN"
 security import "$SECRET_DIR/certificate.p12" -k "$KEYCHAIN" \
     -P "$LOCALWRITE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign >/dev/null
 security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null

@@ -23,7 +23,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Test
-        run: swift test --disable-sandbox --cache-path "$PWD/.build/cache"
+        run: |
+          python3 -m unittest discover -s Tests/ReleaseTests
+          swift test --disable-sandbox --cache-path "$PWD/.build/cache"
 
   release:
     needs: verify

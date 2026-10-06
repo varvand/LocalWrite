@@ -15,3 +15,5 @@ dist/
 !*.env.example
 private-keys/
 signing-secrets/
+__pycache__/
+*.py[cod]
