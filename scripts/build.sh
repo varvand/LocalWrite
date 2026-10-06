@@ -9,6 +9,7 @@ APP="$BUILD_TEMP/LocalWrite.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
 cp .build/release/LocalWrite "$APP/Contents/MacOS/LocalWrite"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+cp .build/checkouts/Sparkle/LICENSE "$APP/Contents/Resources/Sparkle-LICENSE.txt"
 if [[ -n "${LOCALWRITE_VERSION:-}" ]]; then
     if [[ ! "$LOCALWRITE_VERSION" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]]; then
         printf 'Invalid app version.\n' >&2
