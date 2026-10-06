@@ -1,27 +1,30 @@
 #!/bin/bash
 set +x
 set -euo pipefail
+umask 077
 cd "$(dirname "$0")/.."
 : "${LOCALWRITE_SECRET_DIR:?}"
 : "${LOCALWRITE_BUILD_NUMBER:?}"
 : "${GITHUB_SHA:?}"
+: "${RUNNER_TEMP:?}"
 python3 scripts/verify-update-archive.py dist/LocalWrite.zip --private-key-file "$LOCALWRITE_SECRET_DIR/update-key" --source
 REPOSITORY="varvand/LocalWrite"
 TAG="build-$LOCALWRITE_BUILD_NUMBER"
-ARCHIVES="$RUNNER_TEMP/localwrite-updates"
-FEED_CHECKOUT="$RUNNER_TEMP/localwrite-feed"
+PUBLICATION_TEMP=$(mktemp -d "$RUNNER_TEMP/localwrite-publication.XXXXXX")
+trap 'rm -rf "$PUBLICATION_TEMP"' EXIT
+ARCHIVES="$PUBLICATION_TEMP/archives"
+FEED_CHECKOUT="$PUBLICATION_TEMP/feed"
+VERIFIER="$PUBLICATION_TEMP/verify-update-signature"
+swiftc scripts/verify-update-signature.swift -o "$VERIFIER"
 mkdir -p "$ARCHIVES"
-# Reuse recent official archives to generate small signed delta updates.
+# Authenticate the original feed and archives before any extraction or signing.
+HISTORY_OPTIONS=()
 if git ls-remote --exit-code --heads "https://github.com/$REPOSITORY.git" updates >/dev/null 2>&1; then
     git clone --quiet --depth 1 --branch updates "https://github.com/$REPOSITORY.git" "$FEED_CHECKOUT"
-    cp "$FEED_CHECKOUT/appcast.xml" "$ARCHIVES/appcast.xml"
-    gh release list --repo "$REPOSITORY" --limit 10 --json tagName,isDraft \
-        --jq '.[] | select(.isDraft == false and (.tagName | startswith("build-"))) | .tagName' | head -n 3 > "$RUNNER_TEMP/localwrite-previous-tags"
-    while IFS= read -r PREVIOUS_TAG; do
-        if [[ "$PREVIOUS_TAG" != "$TAG" ]]; then
-            gh release download "$PREVIOUS_TAG" --repo "$REPOSITORY" --pattern 'LocalWrite-*.zip' --dir "$ARCHIVES" --skip-existing
-        fi
-    done < "$RUNNER_TEMP/localwrite-previous-tags"
+    python3 scripts/update-history.py prepare --feed "$FEED_CHECKOUT/appcast.xml" \
+        --info-plist Resources/Info.plist --build "$LOCALWRITE_BUILD_NUMBER" \
+        --archives "$ARCHIVES" --verifier "$VERIFIER"
+    HISTORY_OPTIONS=(--history-feed "$FEED_CHECKOUT/appcast.xml")
 else
     mkdir -p "$FEED_CHECKOUT"
     git -C "$FEED_CHECKOUT" init --quiet --initial-branch=updates
@@ -32,7 +35,13 @@ SPARKLE_BIN="$PWD/.build/artifacts/sparkle/Sparkle/bin"
 "$SPARKLE_BIN/generate_appcast" --ed-key-file "$LOCALWRITE_SECRET_DIR/update-key" \
     --download-url-prefix "https://github.com/$REPOSITORY/releases/download/$TAG/" \
     --link "https://github.com/$REPOSITORY" --maximum-versions 3 --maximum-deltas 3 "$ARCHIVES"
-"$SPARKLE_BIN/sign_update" --verify --ed-key-file "$LOCALWRITE_SECRET_DIR/update-key" "$ARCHIVES/appcast.xml"
+# Retain authenticated historical URLs/signatures and reject unauthorized entries.
+python3 scripts/update-history.py finalize --feed "$ARCHIVES/appcast.xml" \
+    --info-plist Resources/Info.plist --build "$LOCALWRITE_BUILD_NUMBER" \
+    --archives "$ARCHIVES" --verifier "$VERIFIER" "${HISTORY_OPTIONS[@]}"
+"$SPARKLE_BIN/sign_update" --ed-key-file "$LOCALWRITE_SECRET_DIR/update-key" "$ARCHIVES/appcast.xml" >/dev/null
+python3 scripts/update-history.py verify --feed "$ARCHIVES/appcast.xml" \
+    --info-plist Resources/Info.plist --build "$LOCALWRITE_BUILD_NUMBER" --verifier "$VERIFIER"
 if ! gh release view "$TAG" --repo "$REPOSITORY" >/dev/null 2>&1; then
     gh release create "$TAG" --repo "$REPOSITORY" --target "$GITHUB_SHA" \
         --title "LocalWrite $LOCALWRITE_BUILD_NUMBER" --notes "Automatic build from main. Commit: $GITHUB_SHA" --draft
