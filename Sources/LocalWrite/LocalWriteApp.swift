@@ -14,11 +14,11 @@ struct LocalWriteApp {
                 print("Accessibility: \(AXIsProcessTrusted() ? "granted" : "not granted")")
                 if CommandLine.arguments.contains("--check-model") {
                     do {
-                        let text = "I definately recieved your mesage."
-                        let result = try await CorrectionEngine.correct(text, configuration: .init(provider: .apple))
+                        let text = "heldlo mxy namea is vincent"
+                        let result = try await CorrectionEngine.correct(text, configuration: .init(provider: .apple, mode: .rescue))
                         print("Input: \(text)")
                         print("Output: \(result)")
-                        guard result == "I definitely received your message." else {
+                        guard result.lowercased() == "hello my name is vincent" else {
                             print("Model smoke test: unexpected output")
                             exit(2)
                         }

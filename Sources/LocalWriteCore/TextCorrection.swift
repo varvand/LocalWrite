@@ -11,6 +11,26 @@ public enum CorrectionScope: String, Codable, CaseIterable, Sendable {
     }
 }
 
+public enum CorrectionMode: String, Codable, CaseIterable, Sendable {
+    case careful, rescue
+
+    public var title: String {
+        switch self {
+        case .careful: "Careful"
+        case .rescue: "Rescue"
+        }
+    }
+
+    public var detail: String {
+        switch self {
+        case .careful:
+            "One model pass for ordinary typos. Only single-word corrections are accepted."
+        case .rescue:
+            "Uses broader dictionary candidates and a verification pass for heavily mistyped text. Short split or joined-word repairs are also allowed."
+        }
+    }
+}
+
 public enum CorrectionError: LocalizedError, Equatable {
     case message(String)
     public var errorDescription: String? {
@@ -172,10 +192,12 @@ public struct TextReplacement: Equatable, Sendable {
 /// Compose the final passage locally, so an LLM never needs to reproduce an
 /// editor's Markdown, hidden characters, indentation or paragraph separators.
 public enum SpellingEdits {
-    public static func apply(_ edits: [WordEdit], to text: String) throws -> String {
+    public static func apply(_ edits: [WordEdit], to text: String, mode: CorrectionMode = .careful) throws -> String {
         guard edits.count <= 100 else { throw CorrectionError.message("The model returned too many edits. Try a shorter paragraph.") }
         let ns = text as NSString
-        let token = try! NSRegularExpression(pattern: #"^[\p{L}\p{M}]+(?:['’\-][\p{L}\p{M}]+)*$"#)
+        let wordPattern = #"[\p{L}\p{M}]+(?:['’\-][\p{L}\p{M}]+)*"#
+        let token = try! NSRegularExpression(pattern: "^" + wordPattern + "$")
+        let phrase = try! NSRegularExpression(pattern: "^" + wordPattern + "(?:[ \\t]+" + wordPattern + "){0,2}$")
         let protected = try! NSRegularExpression(pattern: #"```[\s\S]*?```|`[^`]*`|https?://[^\s<>]+|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}|(?<!\w)[#@][\p{L}\p{M}\p{N}_-]+"#)
         let protectedRanges = protected.matches(in: text, range: NSRange(location: 0, length: ns.length)).map(\.range)
         var changes: [(NSRange, String)] = []
@@ -184,13 +206,17 @@ public enum SpellingEdits {
             if edit.original == edit.replacement { continue }
             let old = edit.original as NSString
             let new = edit.replacement as NSString
-            guard (1...64).contains(old.length), (1...64).contains(new.length),
-                  token.firstMatch(in: edit.original, range: NSRange(location: 0, length: old.length)) != nil,
-                  token.firstMatch(in: edit.replacement, range: NSRange(location: 0, length: new.length)) != nil else {
-                // Ignore commentary or sentence rewrites: only word edits qualify.
+            let validPattern = mode == .rescue ? phrase : token
+            guard (1...96).contains(old.length), (1...96).contains(new.length),
+                  validPattern.firstMatch(in: edit.original, range: NSRange(location: 0, length: old.length)) != nil,
+                  validPattern.firstMatch(in: edit.replacement, range: NSRange(location: 0, length: new.length)) != nil else {
+                // Ignore commentary and sentence rewrites. Rescue mode permits
+                // only a short exact phrase for split/join repairs.
                 continue
             }
-            let limit = max(2, min(6, edit.original.count / 2))
+            let limit = mode == .rescue
+                ? max(3, min(10, (edit.original.count * 2) / 3))
+                : max(2, min(6, edit.original.count / 2))
             guard CorrectionValidation.editDistance(Array(edit.original), Array(edit.replacement), limit: limit) <= limit else { continue }
             if let prior = seen[edit.original] {
                 guard prior == edit.replacement else { throw CorrectionError.message("The model gave conflicting spellings for a word. Your text was left unchanged.") }
@@ -205,8 +231,16 @@ public enum SpellingEdits {
             }
         }
         var result = text
-        // All offsets refer to the original string, and edits are never cascaded.
-        for (range, replacement) in changes.sorted(by: { $0.0.location > $1.0.location }) {
+        // Prefer a specific phrase edit over overlapping word edits. All offsets
+        // refer to the original string, and edits are never cascaded.
+        var accepted: [(NSRange, String)] = []
+        for change in changes.sorted(by: {
+            if $0.0.length != $1.0.length { return $0.0.length > $1.0.length }
+            return $0.0.location < $1.0.location
+        }) where !accepted.contains(where: { NSIntersectionRange($0.0, change.0).length > 0 }) {
+            accepted.append(change)
+        }
+        for (range, replacement) in accepted.sorted(by: { $0.0.location > $1.0.location }) {
             result = (result as NSString).replacingCharacters(in: range, with: replacement)
         }
         return result

@@ -2,6 +2,17 @@ import Foundation
 import Testing
 @testable import LocalWriteCore
 
+@Test func modelInstructionsDescribeSelectedAccuracyMode() {
+    #expect(CorrectionEngine.instructions(for: .careful).contains("single-word spelling edits"))
+    #expect(CorrectionEngine.instructions(for: .rescue).contains("heavily mistyped"))
+    #expect(!CorrectionEngine.instructions(for: .rescue).contains("modeInstructions"))
+}
+
+@Test func typoCandidateRankingRecognizesTranspositionsAndNeighborKeys() {
+    #expect(CorrectionEngine.typoScore(from: "teh", to: "the") < CorrectionEngine.typoScore(from: "teh", to: "ten"))
+    #expect(CorrectionEngine.typoScore(from: "jello", to: "hello") < CorrectionEngine.typoScore(from: "jello", to: "cello"))
+}
+
 @Test func paragraphAtCursorPreservesOtherParagraphs() throws {
     let text = "First paragraph.\nA mesage here.\nThird paragraph."
     let target = try TextTarget(fullText: text, selection: NSRange(location: 24, length: 0), scope: .paragraph)
@@ -87,6 +98,26 @@ import Testing
     #expect(try SpellingEdits.apply([.init(original: "teh", replacement: "the")], to: "teh teh teh") == "the the the")
     #expect(try SpellingEdits.apply([.init(original: "A sentence", replacement: "A rewritten paragraph")], to: "A sentence") == "A sentence")
     #expect(try SpellingEdits.apply([.init(original: "cat", replacement: "elephant")], to: "cat") == "cat")
+}
+
+@Test func rescueModeRepairsBadlyBotchedSentence() throws {
+    let edits = [WordEdit(original: "heldlo", replacement: "hello"),
+                 .init(original: "mxy", replacement: "my"),
+                 .init(original: "namea", replacement: "name")]
+    #expect(try SpellingEdits.apply(edits, to: "heldlo mxy namea is vincent", mode: .rescue) == "hello my name is vincent")
+}
+
+@Test func rescueModeAllowsOnlyShortSplitAndJoinRepairs() throws {
+    #expect(try SpellingEdits.apply([.init(original: "alot", replacement: "a lot")], to: "Thanks alot", mode: .rescue) == "Thanks a lot")
+    #expect(try SpellingEdits.apply([.init(original: "in to", replacement: "into")], to: "log in to the app", mode: .rescue) == "log into the app")
+    #expect(try SpellingEdits.apply([.init(original: "A sentence", replacement: "A rewritten paragraph")], to: "A sentence", mode: .rescue) == "A sentence")
+    #expect(try SpellingEdits.apply([.init(original: "alot", replacement: "a lot")], to: "Thanks alot", mode: .careful) == "Thanks alot")
+}
+
+@Test func overlappingRescueEditsPreferExactPhrase() throws {
+    let edits = [WordEdit(original: "some thing", replacement: "something"),
+                 .init(original: "thing", replacement: "think")]
+    #expect(try SpellingEdits.apply(edits, to: "some thing", mode: .rescue) == "something")
 }
 
 @Test func wordEditsDoNotReplaceSubstringsOrCascade() throws {

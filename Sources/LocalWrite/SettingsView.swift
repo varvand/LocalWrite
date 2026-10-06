@@ -110,6 +110,12 @@ struct SettingsView: View {
                     }
                     Text("Put the cursor after what you’ve written and press \(preferences.hotKey.display). Current line mode corrects from the editor’s line start up to the cursor, leaving everything after it untouched. No manual selection needed.")
                         .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    Divider()
+                    Picker("Accuracy", selection: $preferences.correctionMode) {
+                        ForEach(CorrectionMode.allCases, id: \.self) { mode in Text(mode.title).tag(mode) }
+                    }.pickerStyle(.segmented)
+                    Text(preferences.correctionMode.detail)
+                        .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
             }
             card {

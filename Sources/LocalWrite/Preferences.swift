@@ -37,6 +37,7 @@ final class Preferences: ObservableObject {
     private let defaults = UserDefaults.standard
     @Published var provider: ModelProvider { didSet { defaults.set(provider.rawValue, forKey: "provider") } }
     @Published var scope: CorrectionScope { didSet { defaults.set(scope.rawValue, forKey: "scope") } }
+    @Published var correctionMode: CorrectionMode { didSet { defaults.set(correctionMode.rawValue, forKey: "correctionMode") } }
     @Published var ollamaAddress: String { didSet { defaults.set(ollamaAddress, forKey: "ollamaAddress") } }
     @Published var ollamaModel: String { didSet { defaults.set(ollamaModel, forKey: "ollamaModel") } }
     @Published var clipboardFallback: Bool { didSet { defaults.set(clipboardFallback, forKey: "clipboardFallback") } }
@@ -45,13 +46,15 @@ final class Preferences: ObservableObject {
     @Published var hotKey: HotKey { didSet { defaults.set(try? JSONEncoder().encode(hotKey), forKey: "hotKey") } }
 
     init() {
-        defaults.register(defaults: ["clipboardFallback": true, "excludedApps": "com.apple.Terminal\ncom.googlecode.iterm2"])
+        defaults.register(defaults: ["clipboardFallback": true, "correctionMode": CorrectionMode.rescue.rawValue,
+                                     "excludedApps": "com.apple.Terminal\ncom.googlecode.iterm2"])
         provider = ModelProvider(rawValue: defaults.string(forKey: "provider") ?? "") ?? .apple
         if !defaults.bool(forKey: "cursorPrefixModeV1") {
             defaults.set(CorrectionScope.line.rawValue, forKey: "scope")
             defaults.set(true, forKey: "cursorPrefixModeV1")
         }
         scope = CorrectionScope(rawValue: defaults.string(forKey: "scope") ?? "") ?? .line
+        correctionMode = CorrectionMode(rawValue: defaults.string(forKey: "correctionMode") ?? "") ?? .rescue
         ollamaAddress = defaults.string(forKey: "ollamaAddress") ?? "http://127.0.0.1:11434"
         ollamaModel = defaults.string(forKey: "ollamaModel") ?? ""
         clipboardFallback = defaults.bool(forKey: "clipboardFallback")
@@ -61,7 +64,7 @@ final class Preferences: ObservableObject {
     }
 
     var configuration: EngineConfiguration {
-        .init(provider: provider, ollamaAddress: ollamaAddress, ollamaModel: ollamaModel)
+        .init(provider: provider, ollamaAddress: ollamaAddress, ollamaModel: ollamaModel, mode: correctionMode)
     }
 
     var excludedBundleIDs: Set<String> {
