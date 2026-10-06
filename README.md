@@ -2,6 +2,20 @@
 
 A native macOS menu bar utility that fixes spelling where you are already typing, using an on-device LLM. Built with Swift, AppKit, SwiftUI, Accessibility, and Apple Foundation Models. [Sparkle](https://sparkle-project.org/) provides signed app updates.
 
+**[Download LocalWrite for macOS](https://github.com/varvand/LocalWrite/releases/latest/download/LocalWrite.zip)** · [All releases](https://github.com/varvand/LocalWrite/releases)
+
+The download contains the built `LocalWrite.app`; no Xcode or source build is needed. Requires **macOS 26 or later and an Apple Silicon Mac (M1 or newer)**. Local models are supplied by Apple Intelligence or a separate Ollama installation.
+
+## Download and install
+
+1. Download **LocalWrite.zip** using the link above, then double-click it in Finder to extract the app.
+2. Drag **LocalWrite.app** into **Applications**, then open it there. The app runs in the menu bar.
+3. The app is signed with a persistent self-signed certificate and is **not notarized by Apple**. If macOS blocks the first launch, and you trust this release, open **System Settings → Privacy & Security → Open Anyway**, then confirm **Open**. See [Apple's instructions](https://support.apple.com/en-us/102445). Keep macOS security protections enabled.
+4. In LocalWrite's **General** settings, enable **Accessibility** for the installed app so the shortcut can edit the focused text field.
+5. Use Apple Intelligence with its on-device model enabled, or select **Ollama** in **Local models** after installing Ollama and downloading a text model. Future app updates are available through **Check for Updates…**.
+
+Each successful release publishes the complete app as **LocalWrite.zip**, alongside the versioned archive used by automatic updates. Download the app ZIP rather than GitHub's **Source code** archives. Intel Macs are not supported by the prebuilt download.
+
 ## Use
 
 1. Open `/Applications/LocalWrite.app`.
@@ -64,7 +78,7 @@ bash scripts/build.sh
 bash scripts/install.sh
 ```
 
-The first command creates `dist/LocalWrite.app` with its icon, Info.plist, and pinned Sparkle framework, signs the framework/helpers and app inside-out using a **persistent self-signed local certificate** with hardened runtime, and verifies the signature. Self-signed builds disable library validation to load the bundled Sparkle framework without an Apple Team ID. The certificate and private key live in a dedicated keychain under `~/Library/Application Support/LocalWrite/Signing`. The build does not add a root certificate to system/login trust stores. The app's designated requirement pins that certificate, so its identity is stable across rebuilds. This is a local build, not notarized or suitable for general distribution. No Apple developer account is needed. No app sandbox entitlement is applied, because the utility needs cross-app Accessibility access.
+The first command creates `dist/LocalWrite.app` with its icon, Info.plist, and pinned Sparkle framework, signs the framework/helpers and app inside-out using a **persistent self-signed local certificate** with hardened runtime, and verifies the signature. Self-signed builds disable library validation to load the bundled Sparkle framework without an Apple Team ID. The certificate and private key live in a dedicated keychain under `~/Library/Application Support/LocalWrite/Signing`. The build does not add a root certificate to system/login trust stores. The app's designated requirement pins that certificate, so its identity is stable across rebuilds. This is not an Apple-notarized build; downloaded releases may need explicit first-launch approval as described above. Standard Developer ID distribution requires an Apple-issued signing identity and notarization. No Apple developer account is needed for the current self-signed build. No app sandbox entitlement is applied, because the utility needs cross-app Accessibility access.
 
 The second command copies it into `/Applications`, verifies the installed signature, and opens Settings. Quit a running copy before installing a rebuild. Set `LOCALWRITE_INSTALL_DIR` if a different install folder is necessary, and keep that folder consistent. You can also open `Package.swift` in Xcode; use the scripts to produce the full app bundle. A signed `dist/LocalWrite.zip` is also generated to avoid file-provider metadata affecting the bundle in cloud-synced project folders.
 
