@@ -11,7 +11,7 @@ The download contains the built `LocalWrite.app`; no Xcode or source build is ne
 ## Download and install
 
 1. Download **LocalWrite.zip** using the link above, then double-click it in Finder to extract the app.
-2. Drag **LocalWrite.app** into **Applications**, then open it there. The app runs in the menu bar.
+2. Drag **LocalWrite.app** into **Applications**, then open that copy directly in Finder. If you already opened the downloaded copy, choose **Quit LocalWrite** from its menu-bar menu first. Closing Settings does not quit the app.
 3. The app is signed with a persistent self-signed certificate and is **not notarized by Apple**. If macOS blocks the first launch, and you trust this release, open **System Settings → Privacy & Security → Open Anyway**, then confirm **Open**. See [Apple's instructions](https://support.apple.com/en-us/102445). Keep macOS security protections enabled.
 4. In LocalWrite's **General** settings, enable **Accessibility** for the installed app so the shortcut can edit the focused text field.
 5. Use Apple Intelligence with its on-device model enabled, or select **Ollama** in **Local models** after installing Ollama and downloading a text model. Future app updates are available through **Check for Updates…**.
@@ -36,6 +36,8 @@ The menu bar icon opens Settings, cancellation, **Check for Updates…**, and **
 Development happens on `development`. Changes are bundled there, then merged into `main` when a release is ready. Development pushes run tests without publishing an app update; only `main` publishes releases and updates the signed feed.
 
 LocalWrite checks for updates hourly. Choose **Check for Updates…** in the menu bar, or use **Behavior → App updates** to check manually and change automatic checking. Sparkle downloads the published app, verifies its Ed25519 signature before extracting it, and offers **Install & Relaunch**. The feed itself is also signed. Updates wait for an active correction to finish before restarting the app. No local compilation is needed; settings and downloaded Ollama models live outside the app bundle.
+
+If updating says the app is running from its download location even after you moved it, macOS may still be running a temporary read-only copy (App Translocation). Choose **Quit LocalWrite** from the menu bar, then open **Finder → Applications → LocalWrite.app** and check again. Opening another copy while LocalWrite is still running activates the existing instance. If the problem persists after fully quitting, use Finder to move the app itself out of Applications and back in before reopening it. The `--diagnose` command prints the actual running bundle path, which helps distinguish an installed copy from an `AppTranslocation` path. See [Apple's App Translocation notes](https://developer.apple.com/forums/thread/724969).
 
 Every successful `main` build runs on a standard `macos-26` GitHub runner, reuses the existing local code-signing certificate, and publishes a GitHub Release. The signed feed is on the separate `updates` branch. The workflow generates delta patches from the previous three published archives where worthwhile, with a full app archive as fallback. Pull requests run tests without signing secrets or write access. Sparkle is pinned to an exact version and checkout actions to a commit SHA. GitHub's automatic token publishes releases and the feed; no personal GitHub token is embedded in the app.
 

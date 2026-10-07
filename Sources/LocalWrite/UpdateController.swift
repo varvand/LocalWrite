@@ -57,8 +57,16 @@ final class UpdateController: NSObject, ObservableObject, SPUUpdaterDelegate {
 
     func updater(_ updater: SPUUpdater, didFinishUpdateCycleFor updateCheck: SPUUpdateCheck, error: Error?) {
         if let error = error as NSError? {
-            status = error.domain == SUSparkleErrorDomain && error.code == Int(SUError.noUpdateError.rawValue)
-                ? "You’re up to date." : "Couldn’t check for updates. Try again later."
+            switch (error.domain, error.code) {
+            case (SUSparkleErrorDomain, Int(SUError.noUpdateError.rawValue)):
+                status = "You’re up to date."
+            case (SUSparkleErrorDomain, Int(SUError.runningTranslocated.rawValue)):
+                status = "macOS is running a temporary copy of LocalWrite. Choose Quit LocalWrite in the menu bar, then open LocalWrite.app directly from Finder → Applications. Moving it while it’s running or closing this window doesn’t quit the temporary copy."
+            case (SUSparkleErrorDomain, Int(SUError.runningFromDiskImageError.rawValue)):
+                status = "LocalWrite is running from a read-only location. Quit LocalWrite from the menu bar, use Finder to move the app into Applications, then open it there and check again."
+            default:
+                status = "Couldn’t check for updates. Try again later."
+            }
         } else {
             status = "Updates are checked securely through GitHub."
         }

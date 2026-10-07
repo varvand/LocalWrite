@@ -10,6 +10,7 @@ struct LocalWriteApp {
         if CommandLine.arguments.contains("--diagnose") || CommandLine.arguments.contains("--check-model") {
             Task { @MainActor in
                 let status = CorrectionEngine.appleStatus
+                print("Running app: \(Bundle.main.bundleURL.path)")
                 print("Apple Intelligence: \(status.detail)")
                 print("Accessibility: \(AXIsProcessTrusted() ? "granted" : "not granted")")
                 if CommandLine.arguments.contains("--check-model") {

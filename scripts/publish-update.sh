@@ -52,7 +52,7 @@ Download **LocalWrite.zip** below for the built macOS app. No Xcode or source bu
 Requires **macOS 26 or later and Apple Silicon (M1 or newer)**.
 
 1. Unzip **LocalWrite.zip** and drag **LocalWrite.app** into **Applications**.
-2. Open LocalWrite. If macOS blocks the first launch and you trust this release, use **System Settings → Privacy & Security → Open Anyway**, then confirm **Open**. This build is self-signed and **not notarized by Apple**. [Apple's opening instructions](https://support.apple.com/en-us/102445).
+2. Open the app directly from **Finder → Applications**. If you already opened the downloaded copy, first choose **Quit LocalWrite** from its menu-bar menu; closing Settings does not quit it. If macOS blocks the first launch and you trust this release, use **System Settings → Privacy & Security → Open Anyway**, then confirm **Open**. This build is self-signed and **not notarized by Apple**. [Apple's opening instructions](https://support.apple.com/en-us/102445).
 3. Allow **Accessibility** in LocalWrite's General settings.
 4. Use Apple Intelligence with its on-device model enabled, or install Ollama, download a model, and select it in LocalWrite.
 
