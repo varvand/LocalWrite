@@ -15,9 +15,9 @@ for size in [16, 32, 128, 256, 512] {
         transform.concat()
         let rect = NSRect(x: 72, y: 72, width: 880, height: 880)
         let background = NSBezierPath(roundedRect: rect, xRadius: 205, yRadius: 205)
-        NSGradient(starting: NSColor(srgbRed: 0.22, green: 0.48, blue: 0.39, alpha: 1), ending: NSColor(srgbRed: 0.10, green: 0.28, blue: 0.23, alpha: 1))!.draw(in: background, angle: -70)
+        NSGradient(starting: NSColor(srgbRed: 0.39, green: 0.41, blue: 0.86, alpha: 1), ending: NSColor(srgbRed: 0.28, green: 0.22, blue: 0.63, alpha: 1))!.draw(in: background, angle: -70)
         let text = "Aa" as NSString
-        text.draw(at: NSPoint(x: 208, y: 335), withAttributes: [.font: NSFont.systemFont(ofSize: 370, weight: .medium), .foregroundColor: NSColor(srgbRed: 0.95, green: 0.97, blue: 0.90, alpha: 1)])
+        text.draw(at: NSPoint(x: 208, y: 335), withAttributes: [.font: NSFont.systemFont(ofSize: 370, weight: .medium), .foregroundColor: NSColor(srgbRed: 0.97, green: 0.97, blue: 1, alpha: 1)])
         let underline = NSBezierPath()
         underline.move(to: NSPoint(x: 246, y: 314))
         underline.line(to: NSPoint(x: 547, y: 314))
@@ -32,7 +32,7 @@ for size in [16, 32, 128, 256, 512] {
         check.lineWidth = 33
         check.lineCapStyle = .round
         check.lineJoinStyle = .round
-        NSColor(srgbRed: 0.77, green: 0.91, blue: 0.61, alpha: 1).setStroke()
+        NSColor(srgbRed: 0.82, green: 0.79, blue: 1, alpha: 1).setStroke()
         check.stroke()
         NSGraphicsContext.restoreGraphicsState()
         let suffix = scale == 2 ? "@2x" : ""

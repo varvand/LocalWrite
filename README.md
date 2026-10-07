@@ -2,7 +2,7 @@
 
 A native macOS menu bar utility that fixes spelling where you are already typing, using an on-device LLM. Built with Swift, AppKit, SwiftUI, Accessibility, and Apple Foundation Models. [Sparkle](https://sparkle-project.org/) provides signed app updates.
 
-Settings use Apple's native Liquid Glass materials and controls, with [system sidebar navigation](https://developer.apple.com/design/human-interface-guidelines/sidebars). Text editors retain readable backgrounds, and the window respects the system's Reduce Transparency setting.
+Settings use Apple's native Liquid Glass materials and controls, with [sidebar navigation](https://developer.apple.com/design/human-interface-guidelines/sidebars) and a blue-purple color scheme. One persistent glass highlight moves between every settings page. Text editors retain readable backgrounds, and the window respects the system's Reduce Transparency setting.
 
 **[Download LocalWrite for macOS](https://github.com/varvand/LocalWrite/releases/latest/download/LocalWrite.zip)** · [All releases](https://github.com/varvand/LocalWrite/releases)
 
@@ -32,6 +32,8 @@ Optional paragraph and entire-field modes use Accessibility offsets and support 
 The menu bar icon opens Settings, cancellation, **Check for Updates…**, and **Undo last correction**. Undo works only while the original field still contains exactly the applied result. It stores a single correction in memory until quit; no text is saved to disk by LocalWrite.
 
 ## App updates
+
+Development happens on `development`. Changes are bundled there, then merged into `main` when a release is ready. Development pushes run tests without publishing an app update; only `main` publishes releases and updates the signed feed.
 
 LocalWrite checks for updates hourly. Choose **Check for Updates…** in the menu bar, or use **Behavior → App updates** to check manually and change automatic checking. Sparkle downloads the published app, verifies its Ed25519 signature before extracting it, and offers **Install & Relaunch**. The feed itself is also signed. Updates wait for an active correction to finish before restarting the app. No local compilation is needed; settings and downloaded Ollama models live outside the app bundle.
 

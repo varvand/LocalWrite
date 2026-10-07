@@ -19,11 +19,11 @@ private enum SettingsPage: String, CaseIterable, Identifiable, Hashable {
 }
 
 enum LocalWriteStyle {
-    // Keep the green accent readable in both appearances; the glass adapts itself.
+    // Keep the indigo accent readable in both appearances; the glass adapts itself.
     static let accent = Color(nsColor: NSColor(name: nil) { appearance in
         appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-            ? NSColor(srgbRed: 0.48, green: 0.82, blue: 0.66, alpha: 1)
-            : NSColor(srgbRed: 0.13, green: 0.46, blue: 0.33, alpha: 1)
+            ? NSColor(srgbRed: 0.65, green: 0.64, blue: 0.98, alpha: 1)
+            : NSColor(srgbRed: 0.38, green: 0.33, blue: 0.82, alpha: 1)
     })
 }
 
@@ -33,7 +33,7 @@ struct SettingsView: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var page: SettingsPage = .general
     private let refreshTimer = Timer.publish(every: 2, on: .main, in: .common).autoconnect()
-    private let green = LocalWriteStyle.accent
+    private let accent = LocalWriteStyle.accent
 
     var body: some View {
         NavigationSplitView {
@@ -56,7 +56,7 @@ struct SettingsView: View {
         }
         .frame(minWidth: 820, idealWidth: 880, minHeight: 620, idealHeight: 680)
         .background { SettingsWindowGlass().ignoresSafeArea() }
-        .tint(green)
+        .tint(accent)
         .onChange(of: page) { _, _ in
             if controller.isRecordingShortcut { controller.setShortcut(nil) }
         }
@@ -89,7 +89,7 @@ struct SettingsView: View {
             Section {
                 HStack(alignment: .top, spacing: 14) {
                     Image(systemName: controller.isTrusted ? "checkmark.shield.fill" : "hand.raised.fill")
-                        .font(.system(size: 25)).foregroundStyle(controller.isTrusted ? green : .orange)
+                        .font(.system(size: 25)).foregroundStyle(controller.isTrusted ? accent : .orange)
                         .padding(.top, 2)
                     VStack(alignment: .leading, spacing: 7) {
                         Text(controller.isTrusted ? "Ready to write" : "One permission, then you’re set").font(.headline)
@@ -130,7 +130,7 @@ struct SettingsView: View {
             }
             Section {
                 HStack(spacing: 12) {
-                    Image(systemName: "cpu").font(.system(size: 22)).foregroundStyle(green)
+                    Image(systemName: "cpu").font(.system(size: 22)).foregroundStyle(accent)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(preferences.provider.title).font(.headline)
                         Text(preferences.provider == .apple ? controller.appleStatus.detail : (preferences.ollamaModel.isEmpty ? "Choose a downloaded local model." : preferences.ollamaModel))
@@ -163,7 +163,7 @@ struct SettingsView: View {
                     Text("Uses Apple’s on-device language model. No API key, subscription, or Ollama installation needed.")
                         .font(.callout).foregroundStyle(.secondary)
                     Label(controller.appleStatus.detail, systemImage: controller.appleStatus.available ? "checkmark.circle.fill" : "exclamationmark.circle")
-                        .font(.callout).foregroundStyle(controller.appleStatus.available ? green : .secondary)
+                        .font(.callout).foregroundStyle(controller.appleStatus.available ? accent : .secondary)
                     if !controller.appleStatus.available {
                         Button("Open Apple Intelligence Settings…") {
                             NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.AppleIntelligence")!)
@@ -237,20 +237,19 @@ struct SettingsView: View {
 private struct SettingsSidebar: View {
     @Binding var selection: SettingsPage
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Namespace private var glassSelection
-    @FocusState private var focusedPage: SettingsPage?
-    private let accent = Color(nsColor: .controlAccentColor)
+    @FocusState private var isFocused: Bool
+    private let accent = LocalWriteStyle.accent
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("LocalWrite").font(.headline)
                 .padding(.horizontal, 20).padding(.top, 24).padding(.bottom, 12)
-            GlassEffectContainer(spacing: 12) {
-                List {
+            ScrollView {
+                VStack(spacing: 6) {
                     ForEach(SettingsPage.allCases) { item in
                         Button {
                             selection = item
-                            focusedPage = item
+                            isFocused = true
                         } label: {
                             Label {
                                 Text(item.rawValue).foregroundStyle(.primary)
@@ -260,26 +259,39 @@ private struct SettingsSidebar: View {
                             .font(.body)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 12).padding(.vertical, 9)
-                            .glassEffect(selection == item ? .regular.tint(accent.opacity(0.22)).interactive() : .identity,
-                                         in: .rect(cornerRadius: 10))
-                            .glassEffectID(selection == item ? "selection" : nil, in: glassSelection)
                             .contentShape(.rect)
                         }
                         .buttonStyle(.plain)
-                        .focused($focusedPage, equals: item)
+                        .accessibilityLabel(item.rawValue)
                         .accessibilityAddTraits(selection == item ? .isSelected : [])
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
+                        .anchorPreference(key: SidebarSelectionBounds.self, value: .bounds) {
+                            selection == item ? $0 : nil
+                        }
                     }
                 }
-                .listStyle(.sidebar)
-                .scrollContentBackground(.hidden)
-                .accessibilityLabel("Settings pages")
+                .backgroundPreferenceValue(SidebarSelectionBounds.self) { anchor in
+                    GeometryReader { geometry in
+                        if let anchor {
+                            let bounds = geometry[anchor]
+                            // Move one glass surface instead of transitioning effects between list cells.
+                            Color.clear
+                                .frame(width: bounds.width, height: bounds.height)
+                                .glassEffect(.regular.tint(accent.opacity(0.22)).interactive(),
+                                             in: .rect(cornerRadius: 10))
+                                .position(x: bounds.midX, y: bounds.midY)
+                                .animation(reduceMotion ? nil : .snappy(duration: 0.22), value: selection)
+                                .allowsHitTesting(false)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                }
+                .focusable(interactions: .edit)
+                .focusEffectDisabled()
+                .focused($isFocused)
+                .padding(.horizontal, 16).padding(.vertical, 4)
                 .onKeyPress(.upArrow) { moveSelection(by: -1); return .handled }
                 .onKeyPress(.downArrow) { moveSelection(by: 1); return .handled }
             }
-            .animation(reduceMotion ? nil : .snappy(duration: 0.22), value: selection)
             VStack(alignment: .leading, spacing: 7) {
                 Label("On-device", systemImage: "lock.shield").font(.caption)
                 Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Development")")
@@ -292,7 +304,15 @@ private struct SettingsSidebar: View {
         let pages = SettingsPage.allCases
         guard let index = pages.firstIndex(of: selection), pages.indices.contains(index + offset) else { return }
         selection = pages[index + offset]
-        focusedPage = selection
+        isFocused = true
+    }
+}
+
+private struct SidebarSelectionBounds: PreferenceKey {
+    static var defaultValue: Anchor<CGRect>? { nil }
+
+    static func reduce(value: inout Anchor<CGRect>?, nextValue: () -> Anchor<CGRect>?) {
+        value = nextValue() ?? value
     }
 }
 

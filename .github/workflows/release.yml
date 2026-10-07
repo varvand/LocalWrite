@@ -2,7 +2,7 @@ name: Build and publish LocalWrite
 
 on:
   push:
-    branches: [main]
+    branches: [main, development]
   pull_request:
     branches: [main]
   workflow_dispatch:
