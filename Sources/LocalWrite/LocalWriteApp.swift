@@ -66,9 +66,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if let bundleID = Bundle.main.bundleIdentifier,
-           NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).count > 1 {
-            NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
-                .first(where: { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier })?.activate()
+           let existing = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+                .first(where: { !$0.isTerminated && $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }) {
+            if let existingURL = existing.bundleURL,
+               existingURL.standardizedFileURL != Bundle.main.bundleURL.standardizedFileURL {
+                let alert = NSAlert()
+                alert.messageText = "Another copy of LocalWrite is already running"
+                alert.informativeText = "The running copy is:\n\(existingURL.path)\n\nYou opened:\n\(Bundle.main.bundleURL.path)\n\nTo use this copy, choose Quit LocalWrite from the menu bar, then open it again. Closing Settings does not quit the running copy."
+                alert.addButton(withTitle: "Use Running Copy")
+                alert.addButton(withTitle: "Cancel")
+                NSApp.activate(ignoringOtherApps: true)
+                if alert.runModal() == .alertFirstButtonReturn { existing.activate() }
+            } else {
+                existing.activate()
+            }
             NSApp.terminate(nil)
             return
         }

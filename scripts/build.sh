@@ -4,7 +4,12 @@ cd "$(dirname "$0")/.."
 export CLANG_MODULE_CACHE_PATH="$PWD/.build/clang-cache"
 swift build -c release --disable-sandbox --cache-path "$PWD/.build/cache"
 BUILD_TEMP=$(mktemp -d /private/tmp/LocalWrite-build.XXXXXX)
-trap 'rm -rf "$BUILD_TEMP"' EXIT
+DIST_STAGE=""
+cleanup() {
+    rm -rf "$BUILD_TEMP"
+    if [[ -n "$DIST_STAGE" ]]; then rm -rf "$DIST_STAGE"; fi
+}
+trap cleanup EXIT
 APP="$BUILD_TEMP/LocalWrite.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
 cp .build/release/LocalWrite "$APP/Contents/MacOS/LocalWrite"
@@ -62,8 +67,15 @@ codesign --force "${SIGNING_OPTIONS[@]}" "${REQUIREMENT_OPTIONS[@]}" \
     --options runtime --timestamp=none --entitlements Resources/LocalDevelopment.entitlements "$APP"
 codesign --verify --deep --strict --verbose=2 "$APP"
 mkdir -p "$PWD/dist"
-ditto --norsrc --noextattr "$APP" "$PWD/dist/LocalWrite.app"
+DIST_STAGE=$(mktemp -d "$PWD/dist/.LocalWrite-build.XXXXXX")
+ditto --norsrc --noextattr "$APP" "$DIST_STAGE/LocalWrite.app"
+xattr -cr "$DIST_STAGE/LocalWrite.app"
+swift -module-cache-path "$PWD/.build/clang-cache" scripts/replace-app.swift \
+    "$DIST_STAGE/LocalWrite.app" "$PWD/dist/LocalWrite.app"
 xattr -cr "$PWD/dist/LocalWrite.app"
+# A cloud file provider can immediately reattach Finder metadata here. The ZIP
+# below uses the verified temporary source; installation verifies a clean copy
+# staged on the destination volume rather than relying on this generated copy.
 # Also keep the signed bundle in a ZIP so cloud folder metadata cannot taint it.
 ditto -c -k --keepParent --norsrc --noextattr "$APP" "$PWD/dist/LocalWrite.zip"
 printf '\nBuilt and signed: %s/dist/LocalWrite.app\n' "$PWD"

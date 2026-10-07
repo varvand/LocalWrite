@@ -8,7 +8,13 @@ if pgrep -x LocalWrite >/dev/null; then
 fi
 INSTALL_DIR="${LOCALWRITE_INSTALL_DIR:-/Applications}"
 mkdir -p "$INSTALL_DIR"
-ditto --norsrc --noextattr dist/LocalWrite.app "$INSTALL_DIR/LocalWrite.app"
+INSTALL_STAGE=$(mktemp -d "$INSTALL_DIR/.LocalWrite-install.XXXXXX")
+trap 'rm -rf "$INSTALL_STAGE"' EXIT
+ditto --norsrc --noextattr dist/LocalWrite.app "$INSTALL_STAGE/LocalWrite.app"
+xattr -cr "$INSTALL_STAGE/LocalWrite.app"
+codesign --verify --deep --strict --verbose=2 "$INSTALL_STAGE/LocalWrite.app"
+swift -module-cache-path "$PWD/.build/clang-cache" scripts/replace-app.swift \
+    "$INSTALL_STAGE/LocalWrite.app" "$INSTALL_DIR/LocalWrite.app"
 xattr -cr "$INSTALL_DIR/LocalWrite.app"
 codesign --verify --deep --strict --verbose=2 "$INSTALL_DIR/LocalWrite.app"
 open "$INSTALL_DIR/LocalWrite.app" --args --settings
