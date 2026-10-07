@@ -1,12 +1,22 @@
 import Foundation
 
 public enum CorrectionScope: String, Codable, CaseIterable, Sendable {
-    case line, paragraph, field
+    case line, list, paragraph, field
     public var title: String {
         switch self {
         case .line: "Current line before cursor"
+        case .list: "Current list or sublist"
         case .paragraph: "Current paragraph"
         case .field: "Entire text field"
+        }
+    }
+
+    public var guidance: String {
+        switch self {
+        case .line: "Put the cursor after what you’ve written. Corrects from the editor’s line start to the cursor, leaving everything after it untouched."
+        case .list: "Put the cursor after a word in any list point. Corrects every point at that level, including their nested points. Parent points and surrounding text stay unchanged."
+        case .paragraph: "Put the cursor in the paragraph you want corrected, or select a passage."
+        case .field: "Corrects the entire focused text field, or the text you selected."
         }
     }
 }
@@ -57,6 +67,8 @@ public struct TextTarget: Equatable, Sendable {
             range = selection
         } else if scope == .field {
             range = NSRange(location: 0, length: value.length)
+        } else if scope == .list {
+            range = try ListTarget.range(in: fullText, at: selection.location)
         } else if scope == .line {
             let paragraph = value.paragraphRange(for: selection)
             range = NSRange(location: paragraph.location, length: selection.location - paragraph.location)
@@ -100,7 +112,22 @@ public struct TextTarget: Equatable, Sendable {
             } else if correction.hasPrefix(oldPrefix) {
                 offset = selection.location
             } else {
-                offset = range.location + min(selection.location - range.location, newLength)
+                // Map the insertion point through spelling edits on both sides
+                // of it, including emoji and split/join repairs.
+                let old = Array(text)
+                let new = Array(correction)
+                let beforeCursor = oldPrefix.count
+                let difference = new.difference(from: old)
+                var position = beforeCursor
+                var insertions: [Int] = []
+                for change in difference {
+                    switch change {
+                    case .remove(let index, _, _): if index < beforeCursor { position -= 1 }
+                    case .insert(let index, _, _): insertions.append(index)
+                    }
+                }
+                for index in insertions.sorted() where index <= position { position += 1 }
+                offset = range.location + String(new.prefix(position)).utf16.count
             }
         }
         return NSRange(location: max(0, offset), length: 0)
@@ -198,7 +225,7 @@ public enum SpellingEdits {
         let wordPattern = #"[\p{L}\p{M}]+(?:['’\-][\p{L}\p{M}]+)*"#
         let token = try! NSRegularExpression(pattern: "^" + wordPattern + "$")
         let phrase = try! NSRegularExpression(pattern: "^" + wordPattern + "(?:[ \\t]+" + wordPattern + "){0,2}$")
-        let protected = try! NSRegularExpression(pattern: #"```[\s\S]*?```|`[^`]*`|https?://[^\s<>]+|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}|(?<!\w)[#@][\p{L}\p{M}\p{N}_-]+"#)
+        let protected = try! NSRegularExpression(pattern: #"```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`]*`|https?://[^\s<>]+|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}|(?<!\w)[#@][\p{L}\p{M}\p{N}_-]+|(?m:^[ \t]*(?:[-+*•◦▪‣]|[0-9]{1,9}[.)])[ \t]+\[[ xX]\])"#)
         let protectedRanges = protected.matches(in: text, range: NSRange(location: 0, length: ns.length)).map(\.range)
         var changes: [(NSRange, String)] = []
         var seen: [String: String] = [:]

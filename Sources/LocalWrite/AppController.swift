@@ -54,6 +54,7 @@ final class AppController: ObservableObject {
         correctionTask = Task { [weak self] in
             guard let self else { return }
             defer {
+                editor.finishOperation()
                 timeoutTask?.cancel()
                 isBusy = false
                 correctionTask = nil
@@ -101,7 +102,7 @@ final class AppController: ObservableObject {
         isBusy = true
         onStateChange?()
         Task {
-            defer { isBusy = false; onStateChange?(); updates.correctionDidFinish() }
+            defer { editor.finishOperation(); isBusy = false; onStateChange?(); updates.correctionDidFinish() }
             do {
                 try await editor.undo(previous, clipboardFallback: preferences.clipboardFallback)
                 lastCorrection = nil

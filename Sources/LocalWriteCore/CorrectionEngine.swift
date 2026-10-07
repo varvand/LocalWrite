@@ -90,7 +90,7 @@ public enum CorrectionEngine {
         }
         try Task.checkCancellation()
         let hints = await spellingHints(for: text, mode: configuration.mode)
-        let prompt = "Correct every spelling error using the complete sentence as context.\n<text>\n\(text)\n</text>\n\(hints.prompt)"
+        let prompt = "Correct every spelling error using the complete passage as context. For a list, check every point, including nested points. Preserve all list markers, indentation, checkboxes, and line breaks.\n<text>\n\(text)\n</text>\n\(hints.prompt)"
         // Dictionary false positives (especially names and technical terms) must
         // never trigger another inference. Both accuracy modes use one request.
         let edits = try await generate(prompt, instructions(for: configuration.mode))

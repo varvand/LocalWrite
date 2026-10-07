@@ -126,7 +126,7 @@ struct SettingsView: View {
             } header: {
                 Text("Correction")
             } footer: {
-                Text("Put the cursor after what you’ve written and press \(preferences.hotKey.display). Current line mode corrects from the editor’s line start to the cursor, leaving everything after it untouched. No manual selection needed.")
+                Text("\(preferences.scope.guidance) Press \(preferences.hotKey.display). No manual selection needed.")
             }
             Section {
                 HStack(spacing: 12) {
@@ -213,7 +213,7 @@ struct SettingsView: View {
             } header: {
                 Text("Preferences")
             } footer: {
-                Text("Current line mode uses native Copy and Paste for reliable editor support. The clipboard option controls the advanced paragraph and field modes. LocalWrite restores your clipboard afterward; clipboard history tools can observe temporary text.")
+                Text("Current line and list modes use native Copy and Paste for reliable editor support. The clipboard option controls the advanced paragraph and field modes. LocalWrite restores your clipboard afterward; clipboard history tools can observe temporary text.")
             }
             Section {
                 TextEditor(text: $preferences.excludedApps).font(.system(size: 12, design: .monospaced))

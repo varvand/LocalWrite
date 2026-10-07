@@ -27,7 +27,11 @@ Each successful release publishes the complete app as **LocalWrite.zip**, alongs
 
 By default, **Current line before cursor** corrects exactly the text from the editor's native line start to your insertion point. Text after the cursor stays untouched. You do not select anything yourself. LocalWrite briefly selects backward with Command–Shift–Left, copies that exact text, then returns the cursor before asking the model. It rechecks the same prefix before pasting and leaves the cursor after the corrected text. Wrapped-line behavior follows the editor's native Command–Left command.
 
-Optional paragraph and entire-field modes use Accessibility offsets and support an explicit selection. These advanced modes depend more on the editor's Accessibility implementation; current-line mode is recommended for Obsidian and other Electron editors.
+Choose **General → Correct → Current list or sublist** to correct a group of points without selecting them. Put the cursor after a word in any point and press the same shortcut. All sibling points at that indentation level, their indented continuation lines, and their nested points are corrected together in one model request. A cursor inside a nested sublist targets that sublist; parent points and neighboring sublists remain untouched. Bulleted, numbered, task, and plain Unicode bullet lists are supported. Empty lines between list items are allowed; ordinary paragraphs, headings, and parent items bound the list. Lists are limited to 4,000 characters.
+
+List mode reads native document selections to locate the cursor, verifies the exact selected list before pasting, and restores the cursor through the spelling changes. It selects from the nearest edge and uses native Select All when the list fills the editor, avoiding unnecessary character navigation. Input tracking ignores LocalWrite's tagged editing events and runs only during correction or undo; it counts input without retaining keys or text. It uses Copy and Paste and restores your clipboard, like current-line mode. Only the targeted list is sent to the local model. The model proposes spelling edits; LocalWrite applies them without regenerating markers, indentation, checkboxes, or line breaks. Cursor positions inside fenced code blocks are skipped.
+
+Optional paragraph and entire-field modes use Accessibility offsets and support an explicit selection. These advanced modes depend more on the editor's Accessibility implementation; current-line and list modes use native keyboard selections for Obsidian and other Electron editors.
 
 The menu bar icon opens Settings, cancellation, **Check for Updates…**, and **Undo last correction**. Undo works only while the original field still contains exactly the applied result. It stores a single correction in memory until quit; no text is saved to disk by LocalWrite.
 
@@ -106,7 +110,7 @@ dist/LocalWrite.app/Contents/MacOS/LocalWrite --check-model
 dist/LocalWrite.app/Contents/MacOS/LocalWrite --check-model --ollama-model qwen3.5:9b
 ```
 
-Tests cover paragraph boundaries, selection priority, emoji/UTF-16 cursor handling, empty/oversized inputs, conservative output validation, single-request Rescue behavior, and local-only model routing. `--check-model` uses a fixed sample sentence to exercise the real Apple model and reports correction time. Add `--ollama-model` with a downloaded model name to test Ollama instead. It does not read any open editor. A development command sandbox may block Apple model services even if the model reports ready; run the signed app normally on the Mac.
+Tests cover list/sublist boundaries, numbered and task lists, indented continuations, fenced code, paragraph boundaries, selection priority, emoji/UTF-16 cursor handling, empty/oversized inputs, conservative output validation, single-request Rescue behavior, and local-only model routing. `--check-model` uses a fixed sample sentence to exercise the real Apple model and reports correction time. Add `--ollama-model` with a downloaded model name to test Ollama instead. It does not read any open editor. A development command sandbox may block Apple model services even if the model reports ready; run the signed app normally on the Mac.
 
 Manual integration check after granting Accessibility:
 
@@ -116,6 +120,7 @@ Manual integration check after granting Accessibility:
 4. Trigger **Undo last correction** while the field is unchanged. Then repeat after editing it; the app should refuse to overwrite newer text.
 5. Test a browser textarea and a password field. The former requires exposed Accessibility text; the latter must be skipped.
 6. Re-record the shortcut, quit, and reopen. Confirm it persists.
+7. Choose **Current list or sublist**. Put the cursor after a word in the middle of `- frist point`, `- secnod point`, and `- thidr point` on separate lines. Expect all three spellings to be corrected with markers unchanged. Repeat in an indented sublist and verify that parent points stay unchanged. Add prose before and after the list, and confirm it is not corrected. Test at the end of a list, undo, and input/focus changes during inference.
 
 ## References
 

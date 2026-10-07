@@ -9,6 +9,7 @@ struct EditorSnapshot {
     let appName: String
     let target: TextTarget
     var lineActivity: UserActivityStamp? = nil
+    var listActivity: UInt64? = nil
 }
 
 struct UserActivityStamp: Equatable {
@@ -30,7 +31,42 @@ struct AppliedCorrection {
 
 @MainActor
 final class AccessibilityEditor {
+    private static let editingEventTag: Int64 = 0x4C5752495445
+    private var listInputGeneration: UInt64 = 0
+    private var globalInputMonitor: Any?
+    private var localInputMonitor: Any?
     var isTrusted: Bool { AXIsProcessTrusted() }
+
+    private func startListInputTracking() throws {
+        finishOperation()
+        listInputGeneration = 0
+        let events: NSEvent.EventTypeMask = [.keyDown, .leftMouseDown, .rightMouseDown]
+        globalInputMonitor = NSEvent.addGlobalMonitorForEvents(matching: events) { [weak self] event in
+            MainActor.assumeIsolated { self?.observeListInput(event) }
+        }
+        localInputMonitor = NSEvent.addLocalMonitorForEvents(matching: events) { [weak self] event in
+            MainActor.assumeIsolated { self?.observeListInput(event) }
+            return event
+        }
+        guard globalInputMonitor != nil, localInputMonitor != nil else {
+            finishOperation()
+            throw fail("macOS couldn’t watch for input during correction. Try the shortcut again.")
+        }
+    }
+
+    private func observeListInput(_ event: NSEvent) {
+        // Count input without retaining keys or text. OS event counters include
+        // posted navigation keys, so exclude our explicitly tagged events.
+        guard event.cgEvent?.getIntegerValueField(.eventSourceUserData) != Self.editingEventTag else { return }
+        listInputGeneration &+= 1
+    }
+
+    func finishOperation() {
+        if let globalInputMonitor { NSEvent.removeMonitor(globalInputMonitor) }
+        if let localInputMonitor { NSEvent.removeMonitor(localInputMonitor) }
+        globalInputMonitor = nil
+        localInputMonitor = nil
+    }
 
     func requestPermission() {
         let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
@@ -78,6 +114,17 @@ final class AccessibilityEditor {
             return .init(element: element, pid: pid, appName: app.localizedName ?? "App", target: target,
                          lineActivity: .current())
         }
+        if scope == .list {
+            try startListInputTracking()
+            let activity = listInputGeneration
+            let document = try await readDocumentAtCursor(pid: pid)
+            guard activity == listInputGeneration else {
+                throw fail("You typed or moved the cursor while reading the list. Try the shortcut again.")
+            }
+            return .init(element: element, pid: pid, appName: app.localizedName ?? "App",
+                         target: try TextTarget(fullText: document.text, selection: document.caret, scope: .list),
+                         listActivity: activity)
+        }
         guard let text = text(element), let selection = selection(element) else {
             throw fail("This editor doesn’t expose its text and cursor position. LocalWrite can’t safely correct it.")
         }
@@ -90,6 +137,13 @@ final class AccessibilityEditor {
 
     func apply(_ corrected: String, to snapshot: EditorSnapshot, clipboardFallback: Bool) async throws -> AppliedCorrection {
         try Task.checkCancellation()
+        if let activity = snapshot.listActivity {
+            guard activity == listInputGeneration, isFocused(snapshot) else {
+                throw fail("You typed or changed focus while correcting. Try the shortcut again.")
+            }
+            try await replaceList(corrected, snapshot: snapshot, finalSelection: snapshot.target.caret(after: corrected))
+            return AppliedCorrection(before: snapshot, corrected: corrected, fullTextAfter: snapshot.target.replacing(with: corrected))
+        }
         if let activity = snapshot.lineActivity {
             guard activity == UserActivityStamp.current(), isFocused(snapshot) else {
                 throw fail("You typed or changed focus while correcting. Try the shortcut again.")
@@ -110,6 +164,23 @@ final class AccessibilityEditor {
         guard let app = NSRunningApplication(processIdentifier: snapshot.pid) else { throw fail("The original app has closed.") }
         app.activate()
         try await Task.sleep(for: .milliseconds(180))
+        if snapshot.listActivity != nil {
+            guard isFocused(snapshot) else { throw fail("The original field is no longer focused.") }
+            try startListInputTracking()
+            let activity = listInputGeneration
+            let document = try await readDocumentAtCursor(pid: snapshot.pid)
+            guard document.text == correction.fullTextAfter, activity == listInputGeneration else {
+                throw fail("The original field has changed. Undo was skipped to preserve your newer writing.")
+            }
+            let current = EditorSnapshot(element: snapshot.element, pid: snapshot.pid, appName: snapshot.appName,
+                                         target: try TextTarget(fullText: document.text, selection: document.caret, scope: .list),
+                                         listActivity: activity)
+            guard current.target.text == correction.corrected else {
+                throw fail("The original list has changed. Undo was skipped to preserve your newer writing.")
+            }
+            try await replaceList(snapshot.target.text, snapshot: current, finalSelection: snapshot.target.selection)
+            return
+        }
         if snapshot.lineActivity != nil {
             guard isFocused(snapshot), text(snapshot.element) == correction.fullTextAfter else {
                 throw fail("The original field has changed. Undo was skipped to preserve your newer writing.")
@@ -274,6 +345,9 @@ final class AccessibilityEditor {
     }
 
     private func postKey(_ code: UInt16, flags: CGEventFlags = [], pid: pid_t) throws {
+        if globalInputMonitor != nil, listInputGeneration != 0 {
+            throw fail("You typed or moved the cursor while correcting. Your newer writing was left unchanged.")
+        }
         guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid, !IsSecureEventInputEnabled() else {
             throw fail("The focused app changed. Nothing else was replaced.")
         }
@@ -284,6 +358,8 @@ final class AccessibilityEditor {
         }
         down.flags = flags
         up.flags = flags
+        down.setIntegerValueField(.eventSourceUserData, value: Self.editingEventTag)
+        up.setIntegerValueField(.eventSourceUserData, value: Self.editingEventTag)
         down.post(tap: .cghidEventTap)
         up.post(tap: .cghidEventTap)
     }
@@ -342,6 +418,125 @@ final class AccessibilityEditor {
             guard applied == corrected else { throw fail("The editor didn’t confirm the paste. Check the current line before retrying.") }
         } catch {
             if selected, isFocused(snapshot) { try? postKey(UInt16(kVK_RightArrow), pid: snapshot.pid) }
+            throw error
+        }
+    }
+
+    /// Copy native document selections rather than trusting CodeMirror's AX
+    /// coordinate space. Include one known character in the suffix selection so
+    /// Copy is never empty at the document end (some editors copy a whole line
+    /// when there is no selection).
+    private func readDocumentAtCursor(pid: pid_t) async throws -> (text: String, caret: NSRange) {
+        let clipboard = ClipboardTransaction()
+        defer { clipboard.restore() }
+        var collapse: UInt16?
+        var stepBack = false
+        do {
+            try postKey(UInt16(kVK_UpArrow), flags: [.maskCommand, .maskShift], pid: pid)
+            collapse = UInt16(kVK_RightArrow)
+            try await Task.sleep(for: .milliseconds(30))
+            let prefix = try await copySelection(pid: pid, clipboard: clipboard)
+            guard !prefix.isEmpty, prefix.utf16.count <= 1_000_000, let anchor = prefix.last else {
+                throw fail("Put the cursor after a word in the list you want corrected.")
+            }
+            try postKey(UInt16(kVK_RightArrow), pid: pid)
+            collapse = nil
+            try postKey(UInt16(kVK_LeftArrow), pid: pid)
+            stepBack = true
+            try postKey(UInt16(kVK_DownArrow), flags: [.maskCommand, .maskShift], pid: pid)
+            collapse = UInt16(kVK_LeftArrow)
+            try await Task.sleep(for: .milliseconds(30))
+            let suffix = try await copySelection(pid: pid, clipboard: clipboard)
+            try postKey(UInt16(kVK_LeftArrow), pid: pid)
+            collapse = nil
+            try postKey(UInt16(kVK_RightArrow), pid: pid)
+            stepBack = false
+            try await Task.sleep(for: .milliseconds(20))
+            guard suffix.first == anchor, prefix.utf16.count + suffix.utf16.count <= 1_000_001 else {
+                throw fail("This editor didn’t provide consistent list text. Put the cursor after a word in a list point and retry.")
+            }
+            return (prefix + suffix.dropFirst(), NSRange(location: prefix.utf16.count, length: 0))
+        } catch {
+            if let collapse { try? postKey(collapse, pid: pid) }
+            if stepBack { try? postKey(UInt16(kVK_RightArrow), pid: pid) }
+            throw error
+        }
+    }
+
+    private func moveCharacters(_ count: Int, key: UInt16, flags: CGEventFlags = [], snapshot: EditorSnapshot) async throws {
+        for index in 0..<count {
+            try Task.checkCancellation()
+            if let activity = snapshot.listActivity, activity != listInputGeneration {
+                throw fail("You typed or moved the cursor while correcting. Your newer writing was left unchanged.")
+            }
+            try postKey(key, flags: flags, snapshot: snapshot)
+            if index % 16 == 15 { try await Task.sleep(for: .milliseconds(8)) }
+        }
+    }
+
+    private func replaceList(_ corrected: String, snapshot: EditorSnapshot, finalSelection: NSRange) async throws {
+        let clipboard = ClipboardTransaction()
+        defer { clipboard.restore() }
+        let target = snapshot.target
+        let beforeCursor = (target.fullText as NSString).substring(with:
+            NSRange(location: target.range.location, length: target.selection.location - target.range.location)).count
+        let afterCursor = target.text.count - beforeCursor
+        let entireField = target.range.location == 0 && target.range.length == target.fullText.utf16.count
+        var selected = false
+        var pasted = false
+        do {
+            // Select from the nearest edge. At the usual end-of-list caret,
+            // this avoids traversing the entire list before selecting it.
+            if entireField {
+                try postKey(UInt16(kVK_ANSI_A), flags: .maskCommand, snapshot: snapshot)
+            } else if beforeCursor <= afterCursor {
+                try await moveCharacters(beforeCursor, key: UInt16(kVK_LeftArrow), snapshot: snapshot)
+                try await moveCharacters(target.text.count, key: UInt16(kVK_RightArrow), flags: .maskShift, snapshot: snapshot)
+            } else {
+                try await moveCharacters(afterCursor, key: UInt16(kVK_RightArrow), snapshot: snapshot)
+                try await moveCharacters(target.text.count, key: UInt16(kVK_LeftArrow), flags: .maskShift, snapshot: snapshot)
+            }
+            selected = true
+            try await Task.sleep(for: .milliseconds(30))
+            let actual = try await copySelection(pid: snapshot.pid, clipboard: clipboard)
+            guard actual == target.text, isFocused(snapshot), snapshot.listActivity == listInputGeneration else {
+                throw fail("The list changed or the editor selected different text. Nothing was replaced.")
+            }
+            try Task.checkCancellation()
+            clipboard.write(corrected)
+            try postKey(UInt16(kVK_ANSI_V), flags: .maskCommand, snapshot: snapshot)
+            pasted = true
+            selected = false
+            try await Task.sleep(for: .milliseconds(180))
+            guard isFocused(snapshot), snapshot.listActivity == listInputGeneration else { return }
+            if entireField {
+                try postKey(UInt16(kVK_ANSI_A), flags: .maskCommand, snapshot: snapshot)
+            } else {
+                try await moveCharacters(corrected.count, key: UInt16(kVK_LeftArrow), flags: .maskShift, snapshot: snapshot)
+            }
+            selected = true
+            try await Task.sleep(for: .milliseconds(30))
+            let applied = try await copySelection(pid: snapshot.pid, clipboard: clipboard)
+            guard applied == corrected else {
+                throw fail("The editor didn’t confirm the list paste. Check the list before retrying.")
+            }
+            let relative = finalSelection.location - target.range.location
+            let steps = (corrected as NSString).substring(to: max(0, min(relative, corrected.utf16.count))).count
+            let remaining = corrected.count - steps
+            if steps <= remaining {
+                try postKey(UInt16(kVK_LeftArrow), snapshot: snapshot)
+                selected = false
+                try await moveCharacters(steps, key: UInt16(kVK_RightArrow), snapshot: snapshot)
+            } else {
+                try postKey(UInt16(kVK_RightArrow), snapshot: snapshot)
+                selected = false
+                try await moveCharacters(remaining, key: UInt16(kVK_LeftArrow), snapshot: snapshot)
+            }
+        } catch {
+            if selected, isFocused(snapshot), snapshot.listActivity == listInputGeneration {
+                try? postKey(UInt16(kVK_LeftArrow), snapshot: snapshot)
+                if !pasted { try? await moveCharacters(beforeCursor, key: UInt16(kVK_RightArrow), snapshot: snapshot) }
+            }
             throw error
         }
     }
